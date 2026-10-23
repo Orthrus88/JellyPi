@@ -13,6 +13,7 @@ services:
       - type: bind
         source: ${GPU_MEDIA_ROOT:?Set GPU_MEDIA_ROOT to the media mount on this computer}
         target: /media
+    cpus: ${NVENC_CPU_LIMIT:-4.0}
     deploy:
       resources:
         reservations:

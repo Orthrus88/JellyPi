@@ -7,6 +7,7 @@ import shutil
 import socket
 import subprocess
 import time
+from collections import deque
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -192,11 +193,16 @@ def validate_samples(path: Path, total: float) -> None:
 
 def encode(source: Path, info: dict, job: dict) -> None:
     total = duration(info)
-    temporary = source.with_name(f".{source.stem}.encoder-part{source.suffix.lower()}")
+    target = source if source.suffix.lower() == ".mkv" else source.with_suffix(".mkv")
+    if target != source and target.exists():
+        raise RuntimeError(f"output path already exists: {target}")
+    temporary = source.with_name(f".{source.stem}.encoder-part.mkv")
     temporary.unlink(missing_ok=True)
     command = [
         "ffmpeg",
         "-hide_banner",
+        "-loglevel",
+        "error",
         "-y",
         "-i",
         str(source),
@@ -227,6 +233,17 @@ def encode(source: Path, info: dict, job: dict) -> None:
             )
         else:
             command.extend(["-c:v", "libx264", "-preset", PRESET, "-crf", CRF])
+        scale = "scale=w='min(1920,iw)':h='min(1080,ih)':force_original_aspect_ratio=decrease:force_divisible_by=2"
+        filters = [scale]
+        if job.get("tone_map"):
+            filters = [
+                "zscale=transfer=linear:npl=100",
+                "format=gbrpf32le",
+                "tonemap=tonemap=hable:desat=0",
+                "zscale=primaries=bt709:transfer=bt709:matrix=bt709:range=tv",
+                "format=yuv420p",
+                scale,
+            ]
         command.extend(
             [
                 "-maxrate",
@@ -236,11 +253,22 @@ def encode(source: Path, info: dict, job: dict) -> None:
                 "-pix_fmt",
                 "yuv420p",
                 "-vf",
-                "scale=w='min(1920,iw)':h='min(1080,ih)':force_original_aspect_ratio=decrease:force_divisible_by=2",
+                ",".join(filters),
                 "-metadata",
                 f"MEDIA_ENCODER_PROFILE={PROFILE}",
             ]
         )
+        if job.get("tone_map"):
+            command.extend(
+                [
+                    "-color_primaries",
+                    "bt709",
+                    "-color_trc",
+                    "bt709",
+                    "-colorspace",
+                    "bt709",
+                ]
+            )
     else:
         command.extend(["-c:v", "copy"])
 
@@ -277,12 +305,14 @@ def encode(source: Path, info: dict, job: dict) -> None:
     process = subprocess.Popen(
         command,
         stdout=subprocess.PIPE,
-        stderr=subprocess.DEVNULL,
+        stderr=subprocess.STDOUT,
         text=True,
     )
     last_update = 0.0
+    diagnostic_lines = deque(maxlen=50)
     assert process.stdout is not None
     for line in process.stdout:
+        diagnostic_lines.append(line.rstrip())
         if stop:
             process.terminate()
             process.wait(timeout=30)
@@ -299,7 +329,8 @@ def encode(source: Path, info: dict, job: dict) -> None:
             last_update = time.time()
     if process.wait() != 0:
         temporary.unlink(missing_ok=True)
-        raise RuntimeError("ffmpeg encoding failed")
+        detail = "\n".join(diagnostic_lines)[-1500:].strip()
+        raise RuntimeError(f"ffmpeg encoding failed: {detail or 'no details reported'}")
 
     write_status(state="validating", file=str(source), progress=100, started=started)
     output_info = probe(temporary)
@@ -313,13 +344,15 @@ def encode(source: Path, info: dict, job: dict) -> None:
         raise RuntimeError(f"duration mismatch ({total:.1f}s vs {output_duration:.1f}s)")
     validate_samples(temporary, output_duration)
     os.chmod(temporary, 0o664)
-    os.replace(temporary, source)
+    os.replace(temporary, target)
+    if target != source:
+        source.unlink()
     write_status(
         state="completed",
         file=None,
         progress=100,
         started=None,
-        lastCompleted=str(source),
+        lastCompleted=str(target),
         lastCompletedAt=now(),
         error=None,
         validationSample=None,
@@ -347,8 +380,10 @@ def candidates() -> list[Path]:
     return sorted(files, key=lambda path: path.stat().st_mtime)
 
 
-def run_once() -> bool:
+def run_once() -> str:
     files = candidates()
+    last_error = None
+    failed_source = None
     write_status(state="scanning", file=None, progress=0, queue=len(files), error=None)
     for index, source in enumerate(files):
         try:
@@ -362,8 +397,10 @@ def run_once() -> bool:
                 decision += " + AAC stereo"
             write_status(queue=len(files) - index, decision=decision)
             encode(source, info, job)
-            return True
+            return "completed"
         except Exception as error:
+            last_error = str(error)
+            failed_source = source
             write_status(
                 state="error",
                 file=str(source),
@@ -372,8 +409,17 @@ def run_once() -> bool:
                 failedAt=now(),
             )
             time.sleep(5)
+    if last_error:
+        write_status(
+            state="error",
+            file=str(failed_source),
+            progress=0,
+            queue=0,
+            error=last_error,
+        )
+        return "error"
     write_status(state="idle", file=None, progress=0, queue=0, error=None)
-    return False
+    return "idle"
 
 
 def main() -> None:
@@ -387,6 +433,9 @@ def main() -> None:
         print(json.dumps({"duration": duration(info), "plan": transcode_plan(info)}, indent=2))
         return
 
+    if VIDEO_ENCODER not in {"libx264", "h264_nvenc"}:
+        raise SystemExit(f"unsupported VIDEO_ENCODER: {VIDEO_ENCODER}")
+
     STATE_DIR.mkdir(parents=True, exist_ok=True)
 
     def halt(*_args) -> None:
@@ -396,6 +445,7 @@ def main() -> None:
     signal.signal(signal.SIGTERM, halt)
     signal.signal(signal.SIGINT, halt)
     write_status(state="starting", file=None, progress=0, error=None)
+    result = "idle"
     while not stop:
         if preferred_worker_online():
             write_status(
@@ -416,7 +466,7 @@ def main() -> None:
                 )
             else:
                 try:
-                    run_once()
+                    result = run_once()
                 finally:
                     release_claim()
         if args.once:
@@ -425,6 +475,8 @@ def main() -> None:
             if stop:
                 break
             time.sleep(1)
+    if args.once:
+        raise SystemExit(1 if result == "error" else 0)
     write_status(state="stopped", file=None, progress=0)
 
 

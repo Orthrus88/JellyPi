@@ -6,5 +6,5 @@ Requires=docker.service
 
 [Service]
 Type=oneshot
-ExecStart=/opt/jellypi/scripts/vpn-watchdog.sh
+ExecStart=/usr/local/libexec/jellypi-vpn-watchdog
 TimeoutStartSec=5min

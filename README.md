@@ -91,7 +91,9 @@ Use the same internal paths everywhere so the applications agree about files:
 
 The cleanup worker waits until Radarr or Sonarr has finished importing a
 completed download, then removes the torrent and its download files. The
-organized library copy remains in `Movies` or `TV`.
+organized library copy remains in `Movies` or `TV`. It verifies a newer import
+record for every main video file first, so clearing a failed item from an Arr
+queue cannot cause the only downloaded copy to be deleted.
 
 ## Optional Usenet downloads
 
@@ -152,7 +154,14 @@ download or import. A file is left alone when it is already:
 Otherwise, the encoder preserves the original audio and subtitle tracks, adds
 an AAC stereo compatibility track when needed, and encodes video to H.264 with
 the configured bitrate ceiling. The original is replaced only after duration
-and sample playback validation pass.
+and sample playback validation pass. HDR sources are tone mapped to SDR. Files
+that require conversion are written as Matroska (`.mkv`) so copied audio and
+subtitle tracks remain valid; Radarr and Sonarr pick up the same-name file on
+their next library scan.
+
+The Pi worker uses at most two CPU cores by default, leaving capacity for
+direct playback and the other services. Change `ENCODER_CPU_LIMIT` in `.env`
+if the Pi has more or less headroom.
 
 Pause or resume encoding with:
 
@@ -185,7 +194,9 @@ is available but the VPN path is not:
 ```
 
 The timer runs at ten minutes past every hour, which avoids common router reboot
-times at the top of the hour.
+times at the top of the hour. The installer records the current repository
+location, so the watchdog always uses the same Compose and `.env` files as
+manual updates.
 
 ## Trakt and AniList
 

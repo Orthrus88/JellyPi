@@ -6,6 +6,7 @@ from pathlib import Path
 PROFILE = "jellypi-remote-h264-v1"
 MAX_VIDEO_BITRATE = int(os.getenv("MAX_VIDEO_BITRATE", "6000000"))
 EXTENSIONS = {".mkv", ".mp4", ".m4v", ".avi", ".mov", ".ts", ".m2ts", ".webm"}
+HDR_TRANSFERS = {"smpte2084", "arib-std-b67"}
 
 
 def probe(path: Path) -> dict:
@@ -58,13 +59,13 @@ def transcode_plan(info: dict) -> dict | None:
     except (TypeError, ValueError):
         bitrate = 0
 
+    tone_map = (video.get("color_transfer") or "").lower() in HDR_TRANSFERS
     video_ok = (
         video.get("codec_name") == "h264"
         and video.get("pix_fmt") in {"yuv420p", "yuvj420p"}
         and int(video.get("width") or 0) <= 1920
         and int(video.get("height") or 0) <= 1080
-        and (video.get("color_transfer") or "").lower()
-        not in {"smpte2084", "arib-std-b67"}
+        and not tone_map
         and (encoded_profile == PROFILE or not bitrate or bitrate <= MAX_VIDEO_BITRATE)
     )
     stereo_aac = any(
@@ -75,6 +76,7 @@ def transcode_plan(info: dict) -> dict | None:
         return None
     return {
         "video_encode": not video_ok,
+        "tone_map": tone_map,
         "add_aac": bool(audios) and not stereo_aac,
         "audio_count": len(audios),
     }

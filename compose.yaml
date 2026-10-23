@@ -166,6 +166,7 @@ services:
       ENCODER_CLAIM_TIMEOUT_SECONDS: ${ENCODER_CLAIM_TIMEOUT_SECONDS:-600}
     volumes:
       - ${MEDIA_ROOT:-/srv/media}:/media
+    cpus: ${ENCODER_CPU_LIMIT:-2.0}
     stop_grace_period: 45s
     restart: unless-stopped
 

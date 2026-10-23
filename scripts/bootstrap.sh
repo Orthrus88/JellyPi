@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$PROJECT_DIR"
+
 if [[ ! -f .env ]]; then
   cp .env.example .env
   echo "Created .env. Edit it, add your VPN configuration, then run this script again."

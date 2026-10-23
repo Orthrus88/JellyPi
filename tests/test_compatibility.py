@@ -47,6 +47,11 @@ class CompatibilityTests(unittest.TestCase):
         plan = transcode_plan(media_info({"bit_rate": "12000000"}))
         self.assertTrue(plan["video_encode"])
 
+    def test_hdr_video_is_tone_mapped(self):
+        plan = transcode_plan(media_info({"color_transfer": "smpte2084"}))
+        self.assertTrue(plan["video_encode"])
+        self.assertTrue(plan["tone_map"])
+
     def test_profile_tag_prevents_reencoding_for_container_bitrate_variance(self):
         info = media_info(
             {"bit_rate": None},

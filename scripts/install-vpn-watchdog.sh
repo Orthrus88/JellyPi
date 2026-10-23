@@ -2,16 +2,19 @@
 set -euo pipefail
 
 SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-TARGET_DIR=/opt/jellypi
+TARGET_SCRIPT=/usr/local/libexec/jellypi-vpn-watchdog
+PROJECT_FILE=/etc/jellypi-vpn-watchdog.project
 
-sudo mkdir -p "$TARGET_DIR"
-sudo cp "$SOURCE_DIR/compose.yaml" "$TARGET_DIR/compose.yaml"
-sudo cp -R "$SOURCE_DIR/encoder" "$SOURCE_DIR/cleanup" "$SOURCE_DIR/scripts" "$TARGET_DIR/"
-sudo cp "$SOURCE_DIR/.env" "$TARGET_DIR/.env"
-sudo chmod 600 "$TARGET_DIR/.env"
+if [[ ! -f "$SOURCE_DIR/.env" ]]; then
+  echo "Run scripts/bootstrap.sh and configure .env before installing the watchdog." >&2
+  exit 1
+fi
+
+sudo install -D -m 0755 "$SOURCE_DIR/scripts/vpn-watchdog.sh" "$TARGET_SCRIPT"
+printf '%s\n' "$SOURCE_DIR" | sudo tee "$PROJECT_FILE" >/dev/null
+sudo chmod 644 "$PROJECT_FILE"
 sudo cp "$SOURCE_DIR/systemd/jellypi-vpn-watchdog.service" /etc/systemd/system/
 sudo cp "$SOURCE_DIR/systemd/jellypi-vpn-watchdog.timer" /etc/systemd/system/
-sudo chmod +x "$TARGET_DIR/scripts/vpn-watchdog.sh"
 sudo systemctl daemon-reload
 sudo systemctl enable --now jellypi-vpn-watchdog.timer
 systemctl status jellypi-vpn-watchdog.timer --no-pager

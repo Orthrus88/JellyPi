@@ -1,7 +1,15 @@
 #!/usr/bin/env bash
 set -u
 
-COMPOSE_FILE="${JELLYPI_COMPOSE_FILE:-/opt/jellypi/compose.yaml}"
+PROJECT_FILE="${JELLYPI_PROJECT_FILE:-/etc/jellypi-vpn-watchdog.project}"
+if [[ ! -r "$PROJECT_FILE" ]]; then
+  echo "JellyPi project location is missing: $PROJECT_FILE" >&2
+  exit 1
+fi
+read -r PROJECT_DIR < "$PROJECT_FILE"
+COMPOSE_FILE="${JELLYPI_COMPOSE_FILE:-$PROJECT_DIR/compose.yaml}"
+ENV_FILE="${JELLYPI_ENV_FILE:-$PROJECT_DIR/.env}"
+COMPOSE=(/usr/bin/docker compose --project-directory "$PROJECT_DIR" --env-file "$ENV_FILE" -f "$COMPOSE_FILE")
 exec 9>/run/jellypi-vpn-watchdog.lock
 /usr/bin/flock -n 9 || exit 0
 
@@ -22,7 +30,7 @@ if ! /usr/bin/curl -fsS --connect-timeout 5 --max-time 10 https://www.cloudflare
 fi
 
 echo "VPN path is unavailable; recreating Gluetun and qBittorrent."
-/usr/bin/docker compose -f "$COMPOSE_FILE" up -d --force-recreate gluetun qbittorrent
+"${COMPOSE[@]}" up -d --force-recreate gluetun qbittorrent
 
 for _ in $(seq 1 24); do
   if vpn_path_ok; then
