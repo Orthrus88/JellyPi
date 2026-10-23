@@ -1,0 +1,172 @@
+name: jellypi
+
+x-media-environment: &media-environment
+  PUID: ${PUID:-1000}
+  PGID: ${PGID:-1000}
+  TZ: ${TZ:-Etc/UTC}
+  UMASK: "002"
+
+services:
+  jellyfin:
+    image: lscr.io/linuxserver/jellyfin:latest
+    container_name: jellyfin
+    environment: *media-environment
+    ports:
+      - "8096:8096"
+    volumes:
+      - ${CONFIG_ROOT:-/srv/jellypi/config}/jellyfin:/config
+      - ${MEDIA_ROOT:-/srv/media}/Movies:/data/movies
+      - ${MEDIA_ROOT:-/srv/media}/TV:/data/tv
+    restart: unless-stopped
+
+  seerr:
+    image: ghcr.io/seerr-team/seerr:latest
+    container_name: seerr
+    init: true
+    environment:
+      LOG_LEVEL: info
+      TZ: ${TZ:-Etc/UTC}
+      PORT: "5055"
+    ports:
+      - "5055:5055"
+    volumes:
+      - ${CONFIG_ROOT:-/srv/jellypi/config}/seerr:/app/config
+    depends_on:
+      - jellyfin
+      - radarr
+      - sonarr
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: unless-stopped
+
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    environment: *media-environment
+    ports:
+      - "7878:7878"
+    volumes:
+      - ${CONFIG_ROOT:-/srv/jellypi/config}/radarr:/config
+      - ${MEDIA_ROOT:-/srv/media}:/data
+    restart: unless-stopped
+
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    environment: *media-environment
+    ports:
+      - "8989:8989"
+    volumes:
+      - ${CONFIG_ROOT:-/srv/jellypi/config}/sonarr:/config
+      - ${MEDIA_ROOT:-/srv/media}:/data
+    restart: unless-stopped
+
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    environment: *media-environment
+    ports:
+      - "9696:9696"
+    volumes:
+      - ${CONFIG_ROOT:-/srv/jellypi/config}/prowlarr:/config
+    restart: unless-stopped
+
+  gluetun:
+    image: qmcgaw/gluetun:latest
+    container_name: gluetun
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    environment:
+      VPN_SERVICE_PROVIDER: custom
+      VPN_TYPE: openvpn
+      OPENVPN_CUSTOM_CONFIG: ${OPENVPN_CUSTOM_CONFIG:-/gluetun/custom.conf}
+      OPENVPN_USER: ${OPENVPN_USER:-}
+      OPENVPN_PASSWORD: ${OPENVPN_PASSWORD:-}
+      FIREWALL_INPUT_PORTS: "8080"
+      TZ: ${TZ:-Etc/UTC}
+    ports:
+      - "8080:8080"
+      - "6881:6881"
+      - "6881:6881/udp"
+    volumes:
+      - ${CONFIG_ROOT:-/srv/jellypi/config}/gluetun:/gluetun
+    restart: unless-stopped
+
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    network_mode: service:gluetun
+    depends_on:
+      gluetun:
+        condition: service_healthy
+    environment:
+      <<: *media-environment
+      WEBUI_PORT: "8080"
+      TORRENTING_PORT: "6881"
+    volumes:
+      - ${CONFIG_ROOT:-/srv/jellypi/config}/qbittorrent:/config
+      - ${MEDIA_ROOT:-/srv/media}:/data
+    stop_grace_period: 10s
+    restart: unless-stopped
+
+  torrent-cleanup:
+    build: ./cleanup
+    container_name: torrent-cleanup
+    user: "${PUID:-1000}:${PGID:-1000}"
+    environment:
+      QBIT_BASE_URL: http://gluetun:8080/api/v2/
+      QBIT_USER: ${QBIT_USER:-admin}
+      QBIT_PASSWORD: ${QBIT_PASSWORD:-change-me}
+      RADARR_URL: http://radarr:7878
+      SONARR_URL: http://sonarr:8989
+      RADARR_CONFIG: /arr-config/radarr/config.xml
+      SONARR_CONFIG: /arr-config/sonarr/config.xml
+      CLEANUP_INTERVAL_SECONDS: "300"
+      MIN_COMPLETE_AGE_SECONDS: "600"
+    volumes:
+      - ${CONFIG_ROOT:-/srv/jellypi/config}/radarr:/arr-config/radarr:ro
+      - ${CONFIG_ROOT:-/srv/jellypi/config}/sonarr:/arr-config/sonarr:ro
+    depends_on:
+      - radarr
+      - sonarr
+      - qbittorrent
+    restart: unless-stopped
+
+  encoder:
+    build: ./encoder
+    container_name: media-encoder
+    user: "${PUID:-1000}:${PGID:-1000}"
+    environment:
+      MEDIA_ROOTS: /media/Movies:/media/TV
+      STATE_DIR: /media/.jellypi-encoder
+      MAX_VIDEO_BITRATE: ${ENCODER_MAX_VIDEO_BITRATE:-6000000}
+      CRF: ${ENCODER_CRF:-21}
+      PRESET: ${ENCODER_PRESET:-veryfast}
+      MIN_AGE_SECONDS: ${ENCODER_MIN_AGE_SECONDS:-900}
+    volumes:
+      - ${MEDIA_ROOT:-/srv/media}:/media
+    stop_grace_period: 45s
+    restart: unless-stopped
+
+  encoder-dashboard:
+    build: ./encoder
+    container_name: encoder-dashboard
+    user: "${PUID:-1000}:${PGID:-1000}"
+    command: ["python3", "/app/dashboard.py"]
+    environment:
+      MEDIA_ROOTS: /media/Movies:/media/TV
+      STATE_DIR: /media/.jellypi-encoder
+      MAX_VIDEO_BITRATE: ${ENCODER_MAX_VIDEO_BITRATE:-6000000}
+      MIN_AGE_SECONDS: ${ENCODER_MIN_AGE_SECONDS:-900}
+      DASHBOARD_PORT: "8097"
+    ports:
+      - "8097:8097"
+    volumes:
+      - ${MEDIA_ROOT:-/srv/media}:/media
+    depends_on:
+      - encoder
+    restart: unless-stopped

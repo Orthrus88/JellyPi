@@ -1,0 +1,11 @@
+[Unit]
+Description=Check the JellyPi VPN path every hour
+
+[Timer]
+OnCalendar=*-*-* *:10:00
+Persistent=true
+AccuracySec=1min
+Unit=jellypi-vpn-watchdog.service
+
+[Install]
+WantedBy=timers.target

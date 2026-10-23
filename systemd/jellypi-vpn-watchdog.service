@@ -1,0 +1,10 @@
+[Unit]
+Description=Check and recover the JellyPi VPN path
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/jellypi/scripts/vpn-watchdog.sh
+TimeoutStartSec=5min

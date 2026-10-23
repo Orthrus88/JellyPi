@@ -1,0 +1,17 @@
+.env
+config/
+media/
+*.log
+*.pid
+__pycache__/
+.pytest_cache/
+.DS_Store
+Thumbs.db
+
+# VPN provider files and credentials
+*.ovpn
+*.conf
+*.key
+*.crt
+*.pem
+auth.txt
