@@ -103,8 +103,6 @@ services:
       TZ: ${TZ:-Etc/UTC}
     ports:
       - "8080:8080"
-      - "6881:6881"
-      - "6881:6881/udp"
     volumes:
       - ${CONFIG_ROOT:-/srv/jellypi/config}/gluetun:/gluetun
     restart: unless-stopped

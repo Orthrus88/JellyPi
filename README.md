@@ -77,7 +77,8 @@ Use the same internal paths everywhere so the applications agree about files:
 | Jellyfin | Shows library | `/data/tv` |
 
 1. Open qBittorrent, replace its temporary password, and copy the same username
-   and password into `.env`.
+   and password into `.env`. Under **Settings > Advanced**, set **Network
+   interface** to `tun0`. Leave UPnP/NAT-PMP disabled.
 2. Give Radarr downloads the category `radarr` and Sonarr downloads the category
    `sonarr`.
 3. Add Radarr and Sonarr to Prowlarr under **Settings > Apps**.
@@ -94,6 +95,12 @@ completed download, then removes the torrent and its download files. The
 organized library copy remains in `Movies` or `TV`. It verifies a newer import
 record for every main video file first, so clearing a failed item from an Arr
 queue cannot cause the only downloaded copy to be deleted.
+
+qBittorrent shares Gluetun's network namespace and is additionally bound to the
+VPN interface. Gluetun's firewall acts as the kill switch if the tunnel drops.
+The Compose file deliberately does not publish the torrent listening port on
+the Pi's normal network interface. Provider-side port forwarding is a separate,
+optional feature and is useful only when the VPN provider supports it.
 
 ## Optional Usenet downloads
 
