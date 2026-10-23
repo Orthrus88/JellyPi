@@ -113,6 +113,54 @@ services:
       - radarr
     restart: unless-stopped
 
+  audiobookshelf:
+    profiles:
+      - audiobooks
+    image: ghcr.io/advplyr/audiobookshelf:latest
+    container_name: audiobookshelf
+    user: "${PUID:-1000}:${PGID:-1000}"
+    environment:
+      TZ: ${TZ:-Etc/UTC}
+    ports:
+      - "${AUDIOBOOKSHELF_PORT:-13378}:80"
+    volumes:
+      - ${CONFIG_ROOT:-/srv/jellypi/config}/audiobookshelf/config:/config
+      - ${CONFIG_ROOT:-/srv/jellypi/config}/audiobookshelf/metadata:/metadata
+      - ${MEDIA_ROOT:-/srv/media}/Audiobooks:/audiobooks
+    restart: unless-stopped
+
+  chaptarr:
+    profiles:
+      - audiobooks
+    image: chaptarr/chaptarr:latest
+    container_name: chaptarr
+    environment: *media-environment
+    ports:
+      - "${CHAPTARR_PORT:-8789}:8789"
+    volumes:
+      - ${CONFIG_ROOT:-/srv/jellypi/config}/chaptarr:/config
+      - ${MEDIA_ROOT:-/srv/media}/Audiobooks:/audiobooks
+      - ${MEDIA_ROOT:-/srv/media}:/data
+    depends_on:
+      - prowlarr
+    restart: unless-stopped
+
+  audiobookrequest:
+    profiles:
+      - audiobooks
+    image: ${AUDIOBOOKREQUEST_IMAGE:-markbeep/audiobookrequest:nightly}
+    container_name: audiobookrequest
+    environment:
+      TZ: ${TZ:-Etc/UTC}
+    ports:
+      - "${AUDIOBOOKREQUEST_PORT:-8000}:8000"
+    volumes:
+      - ${CONFIG_ROOT:-/srv/jellypi/config}/audiobookrequest:/config
+    depends_on:
+      - audiobookshelf
+      - chaptarr
+    restart: unless-stopped
+
   gluetun:
     image: qmcgaw/gluetun:latest
     container_name: gluetun

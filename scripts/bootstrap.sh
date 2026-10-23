@@ -31,12 +31,17 @@ fi
 sudo mkdir -p \
   "$MEDIA_ROOT/Movies" \
   "$MEDIA_ROOT/TV" \
+  "$MEDIA_ROOT/Audiobooks" \
   "$MEDIA_ROOT/Downloads/complete" \
   "$MEDIA_ROOT/Downloads/incomplete" \
   "$MEDIA_ROOT/Usenet/complete" \
   "$MEDIA_ROOT/Usenet/incomplete" \
   "$MEDIA_ROOT/.jellypi-encoder" \
-  "$CONFIG_ROOT"/{jellyfin,seerr,radarr,sonarr,prowlarr,qbittorrent,gluetun,sabnzbd,download-recovery}
+  "$CONFIG_ROOT"/{jellyfin,seerr,radarr,sonarr,prowlarr,qbittorrent,gluetun,sabnzbd,download-recovery} \
+  "$CONFIG_ROOT/chaptarr" \
+  "$CONFIG_ROOT/audiobookrequest" \
+  "$CONFIG_ROOT/audiobookshelf/config" \
+  "$CONFIG_ROOT/audiobookshelf/metadata"
 
 sudo chown -R "$PUID:$PGID" "$MEDIA_ROOT" "$CONFIG_ROOT"
 sudo chmod -R u+rwX,g+rwX "$MEDIA_ROOT" "$CONFIG_ROOT"

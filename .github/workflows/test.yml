@@ -16,6 +16,8 @@ jobs:
       - run: shellcheck scripts/*.sh tests/*.sh
       - run: docker compose --env-file .env.example config >/dev/null
       - run: docker compose --env-file .env.example --profile usenet config >/dev/null
+      - run: docker compose --env-file .env.example --profile audiobooks config >/dev/null
+      - run: docker compose --env-file .env.example --profile usenet --profile audiobooks config >/dev/null
       - run: docker compose --env-file .env.nvenc.example -f compose.yaml -f compose.nvenc.yaml config >/dev/null
       - run: docker compose --env-file .env.example build encoder torrent-cleanup
       - run: bash tests/smoke_encoder.sh

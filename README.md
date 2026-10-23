@@ -17,6 +17,9 @@ no user accounts, API keys, media history, provider tokens, or VPN credentials.
 | qBittorrent | `http://PI_ADDRESS:8080` | Downloads routed through Gluetun |
 | SABnzbd (optional) | `http://PI_ADDRESS:8081` | Usenet downloads |
 | Download recovery (optional) | Background service | Failed Usenet cleanup and replacement searches |
+| Audiobookshelf (optional) | `http://PI_ADDRESS:13378` | Audiobook library and listening |
+| AudioBookRequest (optional) | `http://PI_ADDRESS:8000` | Friendly audiobook requests |
+| Chaptarr (optional) | `http://PI_ADDRESS:8789` | Audiobook search, import, and organization |
 | Encoder status | `http://PI_ADDRESS:8097` | Encoder queue, progress, and disk use |
 
 The encoder converts files to a conservative 1080p H.264/AAC profile suitable
@@ -176,6 +179,43 @@ To disable SABnzbd later, remove `usenet` from `COMPOSE_PROFILES` and run:
 docker compose stop sabnzbd
 docker compose rm -f sabnzbd
 ```
+
+## Optional audiobook library
+
+The `audiobooks` profile adds Audiobookshelf for playback, AudioBookRequest for
+search and requests, and Chaptarr for downloading, naming, and importing books.
+It uses the same Prowlarr, SABnzbd, and VPN-bound qBittorrent services as the
+movie and TV stack. Audiobook files are stored under `MEDIA_ROOT/Audiobooks`.
+
+Enable it with Usenet support in `.env`:
+
+```dotenv
+COMPOSE_PROFILES=usenet,audiobooks
+```
+
+Run `./scripts/bootstrap.sh`, then complete the one-time setup:
+
+1. Open Audiobookshelf at `http://PI_ADDRESS:13378`, create its administrator,
+   and add a book library using `/audiobooks`.
+2. Open Chaptarr at `http://PI_ADDRESS:8789`. Add `/audiobooks` as an audiobook
+   root folder. Add SABnzbd at `sabnzbd:8080` with priority `1`; add
+   qBittorrent at `gluetun:8080` with a lower priority such as `10`.
+3. Add Chaptarr to Prowlarr under **Settings > Apps** using
+   `http://chaptarr:8789`, so audiobook indexers are synchronized.
+4. Open AudioBookRequest at `http://PI_ADDRESS:8000` and create its root user.
+   Under **Settings > Prowlarr / Chaptarr**, select Chaptarr and use
+   `http://chaptarr:8789`. Under **Settings > Download**, enable auto-download.
+5. Create an Audiobookshelf API token, then connect it in AudioBookRequest with
+   `http://audiobookshelf:80` and select the audiobook library.
+
+AudioBookRequest's Chaptarr integration currently ships in its nightly image.
+The image name is configurable through `AUDIOBOOKREQUEST_IMAGE`, allowing a
+stable release to be pinned without changing the Compose file.
+
+For listening on iPhone, use an Audiobookshelf-compatible client and set its
+server URL to the HTTPS hostname of your reverse proxy. Downloaded books remain
+available offline. Keep Chaptarr private to the home network; only the playback
+and request services need public hostnames.
 
 ## Compatibility encoder
 
