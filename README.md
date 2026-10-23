@@ -97,6 +97,13 @@ organized library copy remains in `Movies` or `TV`. It verifies a newer import
 record for every main video file first, so clearing a failed item from an Arr
 queue cannot cause the only downloaded copy to be deleted.
 
+When Usenet is enabled, the same worker also removes a torrent if SABnzbd is
+already downloading that exact movie or episode. Torrents that never resolve
+metadata, make no progress, or average less than 16 KiB/s without a connected
+seed for 30 minutes are removed and blocklisted; Radarr or Sonarr then searches
+again. Episode recovery searches only the affected episodes rather than an
+entire season.
+
 qBittorrent shares Gluetun's network namespace and is additionally bound to the
 VPN interface. Gluetun's firewall acts as the kill switch if the tunnel drops.
 The Compose file deliberately does not publish the torrent listening port on

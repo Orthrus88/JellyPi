@@ -165,6 +165,10 @@ services:
       SONARR_CONFIG: /arr-config/sonarr/config.xml
       CLEANUP_INTERVAL_SECONDS: "300"
       MIN_COMPLETE_AGE_SECONDS: "600"
+      QBIT_METADATA_TIMEOUT_SECONDS: "1800"
+      QBIT_ZERO_PROGRESS_TIMEOUT_SECONDS: "1200"
+      QBIT_PARTIAL_STALL_TIMEOUT_SECONDS: "1800"
+      QBIT_MIN_USEFUL_SPEED_BPS: "16384"
     volumes:
       - ${CONFIG_ROOT:-/srv/jellypi/config}/radarr:/arr-config/radarr:ro
       - ${CONFIG_ROOT:-/srv/jellypi/config}/sonarr:/arr-config/sonarr:ro
