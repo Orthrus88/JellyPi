@@ -16,6 +16,7 @@ no user accounts, API keys, media history, provider tokens, or VPN credentials.
 | Prowlarr | `http://PI_ADDRESS:9696` | Indexer management |
 | qBittorrent | `http://PI_ADDRESS:8080` | Downloads routed through Gluetun |
 | SABnzbd (optional) | `http://PI_ADDRESS:8081` | Usenet downloads |
+| Download recovery (optional) | Background service | Failed Usenet cleanup and replacement searches |
 | Encoder status | `http://PI_ADDRESS:8097` | Encoder queue, progress, and disk use |
 
 The encoder converts files to a conservative 1080p H.264/AAC profile suitable
@@ -139,6 +140,28 @@ For a one-hour torrent fallback window, add a Radarr/Sonarr delay profile with
 Usenet preferred, Usenet delay `0`, torrent delay `60`, and **Bypass if Highest
 Quality** disabled. This prevents the same release from immediately starting
 in both download clients.
+
+The `usenet` profile also starts the download-recovery worker. Every five
+minutes it checks SABnzbd for failures that are at least ten minutes old.
+Failures tracked by Radarr or Sonarr are left to their built-in blocklist and
+redownload handling. If a manual SAB retry becomes detached from its Arr queue,
+the worker maps it back to the monitored movie or episode, requests a replacement
+search, and removes the failed SAB history entry and incomplete files. Its state
+is stored under `CONFIG_ROOT/download-recovery`, so a restart cannot submit the
+same replacement search twice.
+
+Change the timing in `.env` when needed:
+
+```dotenv
+RECOVERY_INTERVAL_SECONDS=300
+RECOVERY_MIN_FAILURE_AGE_SECONDS=600
+```
+
+Review recent recovery decisions with:
+
+```bash
+docker compose logs --tail=50 download-recovery
+```
 
 To disable SABnzbd later, remove `usenet` from `COMPOSE_PROFILES` and run:
 

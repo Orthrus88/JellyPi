@@ -86,6 +86,33 @@ services:
       - ${MEDIA_ROOT:-/srv/media}:/data
     restart: unless-stopped
 
+  download-recovery:
+    profiles:
+      - usenet
+    build: ./recovery
+    container_name: download-recovery
+    user: "${PUID:-1000}:${PGID:-1000}"
+    environment:
+      SAB_URL: http://sabnzbd:8080
+      SONARR_URL: http://sonarr:8989
+      RADARR_URL: http://radarr:7878
+      SAB_CONFIG: /arr-config/sabnzbd/sabnzbd.ini
+      SONARR_CONFIG: /arr-config/sonarr/config.xml
+      RADARR_CONFIG: /arr-config/radarr/config.xml
+      RECOVERY_STATE_FILE: /state/state.json
+      RECOVERY_INTERVAL_SECONDS: "${RECOVERY_INTERVAL_SECONDS:-300}"
+      MIN_FAILURE_AGE_SECONDS: "${RECOVERY_MIN_FAILURE_AGE_SECONDS:-600}"
+    volumes:
+      - ${CONFIG_ROOT:-/srv/jellypi/config}/sabnzbd:/arr-config/sabnzbd:ro
+      - ${CONFIG_ROOT:-/srv/jellypi/config}/sonarr:/arr-config/sonarr:ro
+      - ${CONFIG_ROOT:-/srv/jellypi/config}/radarr:/arr-config/radarr:ro
+      - ${CONFIG_ROOT:-/srv/jellypi/config}/download-recovery:/state
+    depends_on:
+      - sabnzbd
+      - sonarr
+      - radarr
+    restart: unless-stopped
+
   gluetun:
     image: qmcgaw/gluetun:latest
     container_name: gluetun

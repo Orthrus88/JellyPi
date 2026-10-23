@@ -36,7 +36,7 @@ sudo mkdir -p \
   "$MEDIA_ROOT/Usenet/complete" \
   "$MEDIA_ROOT/Usenet/incomplete" \
   "$MEDIA_ROOT/.jellypi-encoder" \
-  "$CONFIG_ROOT"/{jellyfin,seerr,radarr,sonarr,prowlarr,qbittorrent,gluetun,sabnzbd}
+  "$CONFIG_ROOT"/{jellyfin,seerr,radarr,sonarr,prowlarr,qbittorrent,gluetun,sabnzbd,download-recovery}
 
 sudo chown -R "$PUID:$PGID" "$MEDIA_ROOT" "$CONFIG_ROOT"
 sudo chmod -R u+rwX,g+rwX "$MEDIA_ROOT" "$CONFIG_ROOT"
