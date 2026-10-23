@@ -30,8 +30,10 @@ sudo mkdir -p \
   "$MEDIA_ROOT/TV" \
   "$MEDIA_ROOT/Downloads/complete" \
   "$MEDIA_ROOT/Downloads/incomplete" \
+  "$MEDIA_ROOT/Usenet/complete" \
+  "$MEDIA_ROOT/Usenet/incomplete" \
   "$MEDIA_ROOT/.jellypi-encoder" \
-  "$CONFIG_ROOT"/{jellyfin,seerr,radarr,sonarr,prowlarr,qbittorrent,gluetun}
+  "$CONFIG_ROOT"/{jellyfin,seerr,radarr,sonarr,prowlarr,qbittorrent,gluetun,sabnzbd}
 
 sudo chown -R "$PUID:$PGID" "$MEDIA_ROOT" "$CONFIG_ROOT"
 sudo chmod -R u+rwX,g+rwX "$MEDIA_ROOT" "$CONFIG_ROOT"

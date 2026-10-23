@@ -73,6 +73,19 @@ services:
       - ${CONFIG_ROOT:-/srv/jellypi/config}/prowlarr:/config
     restart: unless-stopped
 
+  sabnzbd:
+    profiles:
+      - usenet
+    image: lscr.io/linuxserver/sabnzbd:latest
+    container_name: sabnzbd
+    environment: *media-environment
+    ports:
+      - "${SABNZBD_PORT:-8081}:8080"
+    volumes:
+      - ${CONFIG_ROOT:-/srv/jellypi/config}/sabnzbd:/config
+      - ${MEDIA_ROOT:-/srv/media}:/data
+    restart: unless-stopped
+
   gluetun:
     image: qmcgaw/gluetun:latest
     container_name: gluetun

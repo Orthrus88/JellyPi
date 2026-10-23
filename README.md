@@ -15,6 +15,7 @@ no user accounts, API keys, media history, provider tokens, or VPN credentials.
 | Sonarr | `http://PI_ADDRESS:8989` | Series management |
 | Prowlarr | `http://PI_ADDRESS:9696` | Indexer management |
 | qBittorrent | `http://PI_ADDRESS:8080` | Downloads routed through Gluetun |
+| SABnzbd (optional) | `http://PI_ADDRESS:8081` | Usenet downloads |
 | Encoder status | `http://PI_ADDRESS:8097` | Encoder queue, progress, and disk use |
 
 The encoder converts files to a conservative 1080p H.264/AAC profile suitable
@@ -91,6 +92,51 @@ Use the same internal paths everywhere so the applications agree about files:
 The cleanup worker waits until Radarr or Sonarr has finished importing a
 completed download, then removes the torrent and its download files. The
 organized library copy remains in `Movies` or `TV`.
+
+## Optional Usenet downloads
+
+SABnzbd is included as an optional Compose profile. The standard quick start
+does not run it. To enable it, set this in `.env`:
+
+```dotenv
+COMPOSE_PROFILES=usenet
+```
+
+Then apply the change:
+
+```bash
+./scripts/bootstrap.sh
+```
+
+Open `http://PI_ADDRESS:8081` and use SABnzbd's setup wizard to add your Usenet
+provider. Enable SSL when the provider supports it. Set these folders under
+**Settings > Folders**:
+
+| SABnzbd setting | Value |
+| --- | --- |
+| Temporary Download Folder | `/data/Usenet/incomplete` |
+| Completed Download Folder | `/data/Usenet/complete` |
+
+Create categories named `radarr` and `sonarr`. In Radarr and Sonarr, add
+SABnzbd as a download client using host `sabnzbd`, port `8080`, its API key,
+and the matching category. Give SABnzbd the higher priority if qBittorrent
+should serve only as a fallback.
+
+Add NZBGeek or another Newznab-compatible indexer in Prowlarr, then sync it to
+Radarr and Sonarr. Provider passwords and indexer/API keys are entered only in
+the application interfaces and remain under the untracked `CONFIG_ROOT`.
+
+For a one-hour torrent fallback window, add a Radarr/Sonarr delay profile with
+Usenet preferred, Usenet delay `0`, torrent delay `60`, and **Bypass if Highest
+Quality** disabled. This prevents the same release from immediately starting
+in both download clients.
+
+To disable SABnzbd later, remove `usenet` from `COMPOSE_PROFILES` and run:
+
+```bash
+docker compose stop sabnzbd
+docker compose rm -f sabnzbd
+```
 
 ## Compatibility encoder
 
