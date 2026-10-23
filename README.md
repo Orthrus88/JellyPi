@@ -164,6 +164,16 @@ docker compose start encoder
 Change the bitrate, quality, preset, or safety delay in `.env`, then recreate
 the encoder and dashboard containers.
 
+### Optional NVIDIA desktop acceleration
+
+An NVIDIA desktop can run the encoder with NVENC while the Pi remains an
+automatic fallback. The desktop gets priority whenever its heartbeat is fresh;
+if it goes offline, the Pi resumes the queue after five minutes. Both workers
+appear on the encoder status page and coordinate through the shared media disk.
+
+See [Optional NVIDIA encoding worker](docs/nvenc-worker.md) for the Windows and
+Linux setup, GPU check, shared-storage requirement, and start/stop commands.
+
 ## VPN recovery check
 
 Gluetun normally reconnects by itself. An optional hourly host timer can also

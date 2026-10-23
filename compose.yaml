@@ -160,6 +160,10 @@ services:
       CRF: ${ENCODER_CRF:-21}
       PRESET: ${ENCODER_PRESET:-veryfast}
       MIN_AGE_SECONDS: ${ENCODER_MIN_AGE_SECONDS:-900}
+      WORKER_NAME: pi-fallback
+      PREFERRED_WORKER_STATUS: /media/.jellypi-encoder/status-desktop-gpu.json
+      PREFERRED_WORKER_TIMEOUT_SECONDS: ${ENCODER_GPU_TIMEOUT_SECONDS:-300}
+      ENCODER_CLAIM_TIMEOUT_SECONDS: ${ENCODER_CLAIM_TIMEOUT_SECONDS:-600}
     volumes:
       - ${MEDIA_ROOT:-/srv/media}:/media
     stop_grace_period: 45s
@@ -176,6 +180,7 @@ services:
       MAX_VIDEO_BITRATE: ${ENCODER_MAX_VIDEO_BITRATE:-6000000}
       MIN_AGE_SECONDS: ${ENCODER_MIN_AGE_SECONDS:-900}
       DASHBOARD_PORT: "8097"
+      WORKER_OFFLINE_SECONDS: ${ENCODER_GPU_TIMEOUT_SECONDS:-300}
     ports:
       - "8097:8097"
     volumes:

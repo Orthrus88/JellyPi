@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 import argparse
-import fcntl
 import json
 import os
 import signal
+import shutil
+import socket
 import subprocess
 import time
 from datetime import datetime, timezone
@@ -20,11 +21,19 @@ from compatibility import (
 
 ROOTS = [Path(value) for value in os.getenv("MEDIA_ROOTS", "/media/Movies:/media/TV").split(":")]
 STATE_DIR = Path(os.getenv("STATE_DIR", "/media/.jellypi-encoder"))
-STATUS = STATE_DIR / "status.json"
+STATUS = STATE_DIR / os.getenv("STATUS_FILE", "status.json")
 MIN_AGE = int(os.getenv("MIN_AGE_SECONDS", "900"))
 SLEEP = int(os.getenv("SCAN_INTERVAL_SECONDS", "120"))
 CRF = os.getenv("CRF", "21")
 PRESET = os.getenv("PRESET", "veryfast")
+VIDEO_ENCODER = os.getenv("VIDEO_ENCODER", "libx264")
+NVENC_PRESET = os.getenv("NVENC_PRESET", "p4")
+NVENC_CQ = os.getenv("NVENC_CQ", "23")
+WORKER_NAME = os.getenv("WORKER_NAME", socket.gethostname())
+PREFERRED_STATUS = os.getenv("PREFERRED_WORKER_STATUS", "")
+PREFERRED_TIMEOUT = int(os.getenv("PREFERRED_WORKER_TIMEOUT_SECONDS", "300"))
+CLAIM_DIR = STATE_DIR / "encoder.claim"
+CLAIM_TIMEOUT = int(os.getenv("ENCODER_CLAIM_TIMEOUT_SECONDS", "600"))
 stop = False
 
 
@@ -38,11 +47,12 @@ def write_status(**changes) -> None:
         current = json.loads(STATUS.read_text(encoding="utf-8"))
     except Exception:
         current = {}
-    current.update({"worker": os.uname().nodename, "updated": now()}, **changes)
+    current.update({"worker": WORKER_NAME, "updated": now()}, **changes)
     temporary = STATUS.with_suffix(".tmp")
     temporary.write_text(json.dumps(current, indent=2), encoding="utf-8")
     os.chmod(temporary, 0o664)
     os.replace(temporary, STATUS)
+    refresh_claim()
 
 
 def parse_clock(value: str) -> float:
@@ -51,6 +61,79 @@ def parse_clock(value: str) -> float:
         return int(hours) * 3600 + int(minutes) * 60 + float(seconds)
     except (ValueError, TypeError):
         return 0.0
+
+
+def preferred_worker_online() -> bool:
+    if not PREFERRED_STATUS:
+        return False
+    try:
+        status = json.loads(Path(PREFERRED_STATUS).read_text(encoding="utf-8"))
+        updated = datetime.fromisoformat(status["updated"].replace("Z", "+00:00"))
+        age = (datetime.now(timezone.utc) - updated).total_seconds()
+        return age <= PREFERRED_TIMEOUT and status.get("state") not in {"error", "stopped"}
+    except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError):
+        return False
+
+
+def refresh_claim() -> None:
+    owner_path = CLAIM_DIR / "owner.json"
+    try:
+        owner = json.loads(owner_path.read_text(encoding="utf-8"))
+        if owner.get("worker") != WORKER_NAME:
+            return
+        owner.update({"updated": now(), "statusFile": STATUS.name})
+        temporary = owner_path.with_name(f"owner-{os.getpid()}.tmp")
+        temporary.write_text(json.dumps(owner, indent=2), encoding="utf-8")
+        os.replace(temporary, owner_path)
+    except (OSError, TypeError, ValueError, json.JSONDecodeError):
+        pass
+
+
+def acquire_claim() -> bool:
+    try:
+        CLAIM_DIR.mkdir()
+    except FileExistsError:
+        try:
+            owner = json.loads((CLAIM_DIR / "owner.json").read_text(encoding="utf-8"))
+            updated = datetime.fromisoformat(owner["updated"].replace("Z", "+00:00"))
+            age = (datetime.now(timezone.utc) - updated).total_seconds()
+        except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError):
+            try:
+                age = time.time() - CLAIM_DIR.stat().st_mtime
+            except OSError:
+                return False
+        if age <= CLAIM_TIMEOUT:
+            return False
+        stale = STATE_DIR / f"encoder.claim.stale-{time.time_ns()}"
+        try:
+            CLAIM_DIR.rename(stale)
+            shutil.rmtree(stale, ignore_errors=True)
+        except OSError:
+            return False
+        return acquire_claim()
+    except OSError:
+        return False
+    try:
+        (CLAIM_DIR / "owner.json").write_text(
+            json.dumps(
+                {"worker": WORKER_NAME, "updated": now(), "statusFile": STATUS.name},
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+    except OSError:
+        shutil.rmtree(CLAIM_DIR, ignore_errors=True)
+        return False
+    return True
+
+
+def release_claim() -> None:
+    try:
+        owner = json.loads((CLAIM_DIR / "owner.json").read_text(encoding="utf-8"))
+        if owner.get("worker") == WORKER_NAME:
+            shutil.rmtree(CLAIM_DIR)
+    except (OSError, TypeError, ValueError, json.JSONDecodeError):
+        pass
 
 
 def validate_samples(path: Path, total: float) -> None:
@@ -127,14 +210,25 @@ def encode(source: Path, info: dict, job: dict) -> None:
     command.extend(["-map", "0:s?", "-map_metadata", "0", "-map_chapters", "0"])
 
     if job["video_encode"]:
+        if VIDEO_ENCODER == "h264_nvenc":
+            command.extend(
+                [
+                    "-c:v",
+                    "h264_nvenc",
+                    "-preset",
+                    NVENC_PRESET,
+                    "-rc",
+                    "vbr",
+                    "-cq",
+                    NVENC_CQ,
+                    "-b:v",
+                    "0",
+                ]
+            )
+        else:
+            command.extend(["-c:v", "libx264", "-preset", PRESET, "-crf", CRF])
         command.extend(
             [
-                "-c:v",
-                "libx264",
-                "-preset",
-                PRESET,
-                "-crf",
-                CRF,
                 "-maxrate",
                 str(MAX_VIDEO_BITRATE),
                 "-bufsize",
@@ -258,6 +352,7 @@ def run_once() -> bool:
     write_status(state="scanning", file=None, progress=0, queue=len(files), error=None)
     for index, source in enumerate(files):
         try:
+            refresh_claim()
             info = probe(source)
             job = transcode_plan(info)
             if job is None:
@@ -293,12 +388,6 @@ def main() -> None:
         return
 
     STATE_DIR.mkdir(parents=True, exist_ok=True)
-    lock_path = STATE_DIR / "encoder.lock"
-    lock = lock_path.open("w", encoding="utf-8")
-    try:
-        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    except BlockingIOError:
-        raise SystemExit("media encoder is already running")
 
     def halt(*_args) -> None:
         global stop
@@ -308,7 +397,28 @@ def main() -> None:
     signal.signal(signal.SIGINT, halt)
     write_status(state="starting", file=None, progress=0, error=None)
     while not stop:
-        run_once()
+        if preferred_worker_online():
+            write_status(
+                state="standby",
+                file=None,
+                progress=0,
+                error=None,
+                decision="Preferred GPU worker is online",
+            )
+        else:
+            if not acquire_claim():
+                write_status(
+                    state="standby",
+                    file=None,
+                    progress=0,
+                    error=None,
+                    decision="Another worker is encoding",
+                )
+            else:
+                try:
+                    run_once()
+                finally:
+                    release_claim()
         if args.once:
             break
         for _ in range(SLEEP):
