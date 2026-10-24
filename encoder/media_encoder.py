@@ -361,23 +361,26 @@ def encode(source: Path, info: dict, job: dict) -> None:
 
 
 def candidates() -> list[Path]:
-    files: list[Path] = []
+    files: list[tuple[float, Path]] = []
     cutoff = time.time() - MIN_AGE
     for root in ROOTS:
         if not root.exists():
             continue
         for path in root.rglob("*"):
             try:
+                stat = path.stat()
                 if (
                     path.is_file()
                     and path.suffix.lower() in EXTENSIONS
                     and not path.name.startswith(".")
-                    and path.stat().st_mtime < cutoff
+                    and stat.st_mtime < cutoff
                 ):
-                    files.append(path)
+                    files.append((stat.st_mtime, path))
             except OSError:
                 pass
-    return sorted(files, key=lambda path: path.stat().st_mtime)
+    # Do not stat files again while sorting. Another worker may replace a file
+    # after discovery, and that race must not terminate this worker.
+    return [path for _, path in sorted(files, key=lambda item: item[0])]
 
 
 def run_once() -> str:
