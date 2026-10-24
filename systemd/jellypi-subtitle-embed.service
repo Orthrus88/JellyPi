@@ -1,0 +1,14 @@
+[Unit]
+Description=Embed cleaned English subtitles for EVO-compatible direct play
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/etc/default/jellypi-subtitle-embed
+ExecStart=/usr/local/sbin/jellypi-embed-clean-subs.py
+Nice=19
+IOSchedulingClass=idle
+IOSchedulingPriority=7
+CPUWeight=10

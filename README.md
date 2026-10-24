@@ -260,6 +260,24 @@ appear on the encoder status page and coordinate through the shared media disk.
 See [Optional NVIDIA encoding worker](docs/nvenc-worker.md) for the Windows and
 Linux setup, GPU check, shared-storage requirement, and start/stop commands.
 
+### EVO-compatible subtitles
+
+Some direct-play clients, including EVO Player on PS5, read subtitle tracks
+from the media container and do not list Bazarr's external SRT sidecars. Install
+the optional subtitle embedder after Bazarr is configured:
+
+```bash
+./scripts/install-subtitle-embedder.sh
+```
+
+The hourly worker finds English SRT sidecars next to MKV and MP4 files, removes
+older embedded subtitle tracks, and embeds one cleaned English track. Video and
+audio streams are copied without encoding. Each output is checked for duration
+and subtitle format before it atomically replaces the original. The worker runs
+at idle I/O and CPU priority and pauses while Jellyfin reports active playback.
+Progress is recorded in
+`/var/lib/jellypi/subtitle-embed-state.json`.
+
 ## VPN recovery check
 
 Gluetun normally reconnects by itself. An optional hourly host timer can also
