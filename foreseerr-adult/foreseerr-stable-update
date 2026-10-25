@@ -1,0 +1,137 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+COMPOSE_FILE=${COMPOSE_FILE:-/opt/media-stack/compose.yaml}
+COMPOSE_DIR=${COMPOSE_DIR:-/opt/media-stack}
+BUILD_CONTEXT=${BUILD_CONTEXT:-/opt/media-stack/foreseerr-adult}
+CONFIG_PARENT=${CONFIG_PARENT:-/var/lib/seerr}
+CONFIG_DIR=${CONFIG_PARENT}/config
+BACKUP_ROOT=${BACKUP_ROOT:-/var/backups/foreseerr}
+IMAGE_REPO=jellypi/foreseerr-adult
+SERVICE=seerr
+LOCK_FILE=/run/lock/foreseerr-stable-update.lock
+
+exec 9>"$LOCK_FILE"
+flock -n 9 || { echo "Foreseerr update already running; exiting."; exit 0; }
+
+log() { printf '%s %s\n' "$(date --iso-8601=seconds)" "$*"; }
+
+read_current_tag() {
+  python3 - "$COMPOSE_FILE" <<'PY'
+import pathlib, re, sys
+text = pathlib.Path(sys.argv[1]).read_text()
+match = re.search(
+    r'(?ms)^  seerr:\n(?:(?!^  [A-Za-z0-9_-]+:).)*?^    image:\s*jellypi/foreseerr-adult:([^\s#]+)',
+    text,
+)
+if not match:
+    raise SystemExit('Could not find the JellyPi Foreseerr image tag in compose.yaml')
+print(match.group(1))
+PY
+}
+
+read_latest_tag() {
+  python3 <<'PY'
+import json, re, urllib.request
+request = urllib.request.Request(
+    'https://api.github.com/repos/selmant/foreseerr/releases/latest',
+    headers={
+        'Accept': 'application/vnd.github+json',
+        'User-Agent': 'JellyPi-Foreseerr-Updater/2.0',
+    },
+)
+with urllib.request.urlopen(request, timeout=30) as response:
+    release = json.load(response)
+tag = release.get('tag_name', '')
+if release.get('draft') or release.get('prerelease') or not re.fullmatch(r'v\d+\.\d+\.\d+', tag):
+    raise SystemExit(f'Latest GitHub release is not a valid stable tag: {tag!r}')
+print(tag)
+PY
+}
+
+set_compose_tag() {
+  NEW_TAG="$1" python3 - "$COMPOSE_FILE" <<'PY'
+import os, pathlib, re, sys, tempfile
+path = pathlib.Path(sys.argv[1])
+text = path.read_text()
+pattern = r'(?ms)(^  seerr:\n(?:(?!^  [A-Za-z0-9_-]+:).)*?^    image:\s*jellypi/foreseerr-adult:)([^\s#]+)'
+updated, count = re.subn(pattern, lambda match: match.group(1) + os.environ['NEW_TAG'], text, count=1)
+if count != 1:
+    raise SystemExit('Could not update the JellyPi Foreseerr image tag in compose.yaml')
+fd, temporary = tempfile.mkstemp(prefix='.compose.', dir=str(path.parent))
+try:
+    with os.fdopen(fd, 'w') as output:
+        output.write(updated)
+        output.flush()
+        os.fsync(output.fileno())
+    os.chmod(temporary, path.stat().st_mode)
+    os.replace(temporary, path)
+finally:
+    if os.path.exists(temporary):
+        os.unlink(temporary)
+PY
+}
+
+wait_healthy() {
+  local expected=$1 deadline=$((SECONDS + 240)) state reported
+  while ((SECONDS < deadline)); do
+    state=$(docker inspect "$SERVICE" --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' 2>/dev/null || true)
+    if [[ "$state" == healthy ]]; then
+      reported=$(curl -fsS --max-time 10 http://127.0.0.1:5055/api/v1/status 2>/dev/null \
+        | python3 -c 'import json,sys; print(json.load(sys.stdin).get("version", ""))' 2>/dev/null || true)
+      [[ "v$reported" == "$expected" ]] && return 0
+    fi
+    sleep 5
+  done
+  return 1
+}
+
+mkdir -p "$BACKUP_ROOT"
+current_tag=$(read_current_tag)
+latest_tag=$(read_latest_tag)
+log "Current=$current_tag LatestStable=$latest_tag"
+[[ "$current_tag" == "$latest_tag" ]] && { log 'Already on latest stable release; no action needed.'; exit 0; }
+
+# Compile and patch the new release before stopping the working container. The
+# Dockerfile's git apply --check makes an incompatible upstream release fail
+# here, leaving the current release online.
+log "Building $IMAGE_REPO:$latest_tag before downtime."
+DOCKER_BUILDKIT=1 docker build --pull \
+  --build-arg "FORESEERR_VERSION=$latest_tag" \
+  --tag "$IMAGE_REPO:$latest_tag" \
+  "$BUILD_CONTEXT"
+
+stamp=$(date +%Y%m%d-%H%M%S)
+backup_dir="$BACKUP_ROOT/$stamp-$current_tag-to-$latest_tag"
+mkdir -p "$backup_dir"
+cp -a "$COMPOSE_FILE" "$backup_dir/compose.yaml"
+
+log 'Stopping Foreseerr for a consistent database backup.'
+docker compose -f "$COMPOSE_FILE" --project-directory "$COMPOSE_DIR" stop "$SERVICE"
+if ! tar -C "$CONFIG_PARENT" -czf "$backup_dir/config.tar.gz" config; then
+  log 'Backup failed; restarting the existing release.'
+  docker compose -f "$COMPOSE_FILE" --project-directory "$COMPOSE_DIR" up -d "$SERVICE"
+  exit 1
+fi
+
+set_compose_tag "$latest_tag"
+log "Starting Foreseerr $latest_tag."
+if docker compose -f "$COMPOSE_FILE" --project-directory "$COMPOSE_DIR" up -d "$SERVICE" \
+    && wait_healthy "$latest_tag"; then
+  log "Foreseerr $latest_tag is healthy and its API reports the expected version."
+  find "$BACKUP_ROOT" -mindepth 1 -maxdepth 1 -type d -mtime +14 -exec rm -rf -- {} +
+  exit 0
+fi
+
+log "Health verification failed. Restoring $current_tag and its pre-upgrade data."
+docker compose -f "$COMPOSE_FILE" --project-directory "$COMPOSE_DIR" stop "$SERVICE" || true
+mv "$CONFIG_DIR" "$backup_dir/failed-config" || true
+tar -C "$CONFIG_PARENT" -xzf "$backup_dir/config.tar.gz"
+cp -a "$backup_dir/compose.yaml" "$COMPOSE_FILE"
+docker compose -f "$COMPOSE_FILE" --project-directory "$COMPOSE_DIR" up -d "$SERVICE"
+if wait_healthy "$current_tag"; then
+  log "Rollback to $current_tag completed successfully."
+else
+  log "Rollback did not become healthy; manual recovery is required from $backup_dir."
+fi
+exit 1

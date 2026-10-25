@@ -1,0 +1,15 @@
+diff --git a/server/routes/search.ts b/server/routes/search.ts
+index a23588b..01279a0 100644
+--- a/server/routes/search.ts
++++ b/server/routes/search.ts
+@@ -10,0 +11,6 @@ const searchRoutes = Router();
++const adultContentUserIds = new Set(
++  (process.env.ADULT_CONTENT_USER_IDS ?? '')
++    .split(',')
++    .map((userId) => Number(userId.trim()))
++    .filter((userId) => Number.isSafeInteger(userId) && userId > 0)
++);
+@@ -32,0 +39,3 @@ searchRoutes.get('/', async (req, res, next) => {
++        includeAdult: req.user
++          ? adultContentUserIds.has(req.user.id)
++          : false,
