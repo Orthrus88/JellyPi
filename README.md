@@ -115,10 +115,10 @@ optional feature and is useful only when the VPN provider supports it.
 
 ## Optional per-user adult search
 
-Foreseerr normally excludes adult TMDb results from native text search and
-movie discovery. The optional `compose.foreseerr-adult.yaml` overlay enables
-those results only for an explicit allowlist of Foreseerr user IDs while
-retaining Foreseerr's Jellyfin, AniList, Trakt, and intervention features.
+Foreseerr normally excludes adult TMDb results from native text search. The
+optional `compose.foreseerr-adult.yaml` overlay enables those results only for
+an explicit allowlist of Foreseerr user IDs while retaining Foreseerr's
+Jellyfin, AniList, Trakt, and intervention features.
 
 Set the allowed IDs, then include the overlay when starting Foreseerr:
 
@@ -132,10 +132,9 @@ docker compose -f compose.yaml -f compose.foreseerr-adult.yaml up -d --build see
 
 No user is allowed when the variable is empty. See
 `foreseerr-adult/README.md` for the fail-safe stable-release updater and upgrade
-behavior. TMDb keywords such as `adult` and `hentai` are ordinary metadata
-tags, not adult-category switches, so coverage depends on TMDb's catalog and
-tagging. Use Jellyfin library access rules separately when restricted playback
-accounts must not see downloaded adult media.
+behavior. This setting controls search results; use Jellyfin library access
+rules separately when restricted playback accounts must not see downloaded
+adult media.
 
 ## Optional Usenet downloads
 

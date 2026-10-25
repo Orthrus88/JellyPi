@@ -1,16 +1,12 @@
 # Foreseerr adult-search overlay
 
 This optional image keeps Foreseerr's Jellyfin, Trakt, AniList, and intervention
-features while enabling TMDb adult results in native text search and movie
-discovery for an explicit allowlist of Foreseerr user IDs.
+features while enabling TMDb adult results in native text search for an explicit
+allowlist of Foreseerr user IDs.
 
 No account is allowed by default. Set `FORESEERR_ADULT_USER_IDS` to a
 comma-separated list such as `1` or `1,7`. Other users continue sending
 `include_adult=false` to TMDb.
-
-TMDb's `adult` and `hentai` keywords are regular tags rather than an adult-only
-category. Selecting one can still return non-adult documentaries or omit adult
-titles that TMDb has not tagged. Search by title when checking a specific work.
 
 Build and run it with the base JellyPi stack:
 
