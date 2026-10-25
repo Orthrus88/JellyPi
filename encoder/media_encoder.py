@@ -421,7 +421,14 @@ def run_once() -> str:
             error=last_error,
         )
         return "error"
-    write_status(state="idle", file=None, progress=0, queue=0, error=None)
+    write_status(
+        state="idle",
+        file=None,
+        progress=0,
+        queue=0,
+        error=None,
+        decision=None,
+    )
     return "idle"
 
 

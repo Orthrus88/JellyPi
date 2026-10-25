@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Embed validated English SRT sidecars for direct-play clients such as EVO."""
 
+import fcntl
 import json
 import os
 import sqlite3
@@ -136,6 +137,15 @@ def already_clean(info, extension):
     return tags.get("language") == "eng" and tags.get("title") == "English Dialogue"
 
 
+def playback_stream_signature(info):
+    """Describe video and audio streams a subtitle remux must preserve."""
+    return sorted(
+        (stream.get("codec_type"), stream.get("codec_name"))
+        for stream in info.get("streams", [])
+        if stream.get("codec_type") in {"video", "audio"}
+    )
+
+
 def remux(media, sidecar):
     before = probe(media)
     if already_clean(before, media.suffix.lower()):
@@ -191,12 +201,19 @@ def remux(media, sidecar):
         if len(subtitles) != 1 or subtitles[0].get("codec_name") != subtitle_codec:
             raise RuntimeError("output subtitle validation failed")
 
+        if playback_stream_signature(before) != playback_stream_signature(after):
+            raise RuntimeError("video/audio stream validation failed")
+
         before_duration = float(before.get("format", {}).get("duration") or 0)
         after_duration = float(after.get("format", {}).get("duration") or 0)
         if (
             before_duration
             and after_duration
-            and abs(before_duration - after_duration) > 1.0
+            # Removing embedded subtitles can legitimately change the Matroska
+            # container duration by a few seconds when the old subtitle track
+            # extends beyond the final video frame. Stream preservation above
+            # catches an actual dropped video or audio track.
+            and abs(before_duration - after_duration) > 5.0
         ):
             raise RuntimeError(
                 f"duration changed from {before_duration} to {after_duration}"
@@ -212,9 +229,15 @@ def remux(media, sidecar):
 
 
 def main():
-    descriptor = os.open(LOCK, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+    descriptor = os.open(LOCK, os.O_CREAT | os.O_RDWR, 0o600)
+    try:
+        fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        os.close(descriptor)
+        print("subtitle embed job is already running", file=sys.stderr)
+        return 0
+    os.ftruncate(descriptor, 0)
     os.write(descriptor, str(os.getpid()).encode())
-    os.close(descriptor)
     try:
         work = candidates()
         done = skipped = failed = 0
@@ -277,6 +300,8 @@ def main():
         )
         return 1 if failed else 0
     finally:
+        fcntl.flock(descriptor, fcntl.LOCK_UN)
+        os.close(descriptor)
         LOCK.unlink(missing_ok=True)
 
 
