@@ -1,15 +1,32 @@
-diff --git a/server/routes/search.ts b/server/routes/search.ts
-index a23588b..01279a0 100644
---- a/server/routes/search.ts
-+++ b/server/routes/search.ts
-@@ -10,0 +11,6 @@ const searchRoutes = Router();
+diff --git a/server/routes/discover/tmdb.ts b/server/routes/discover/tmdb.ts
+index 11e0a81..5fe30aa 100644
+--- a/server/routes/discover/tmdb.ts
++++ b/server/routes/discover/tmdb.ts
+@@ -36,0 +37,7 @@ const tmdbDiscoverRoutes = Router();
 +const adultContentUserIds = new Set(
 +  (process.env.ADULT_CONTENT_USER_IDS ?? '')
 +    .split(',')
 +    .map((userId) => Number(userId.trim()))
 +    .filter((userId) => Number.isSafeInteger(userId) && userId > 0)
 +);
-@@ -32,0 +39,3 @@ searchRoutes.get('/', async (req, res, next) => {
++
+@@ -67,0 +75,3 @@ tmdbDiscoverRoutes.get('/movies', async (req, res, next) => {
++          includeAdult: req.user
++            ? adultContentUserIds.has(req.user.id)
++            : false,
+diff --git a/server/routes/search.ts b/server/routes/search.ts
+index a23588b..93d0ba4 100644
+--- a/server/routes/search.ts
++++ b/server/routes/search.ts
+@@ -11,0 +12,7 @@ const searchRoutes = Router();
++const adultContentUserIds = new Set(
++  (process.env.ADULT_CONTENT_USER_IDS ?? '')
++    .split(',')
++    .map((userId) => Number(userId.trim()))
++    .filter((userId) => Number.isSafeInteger(userId) && userId > 0)
++);
++
+@@ -32,0 +40,3 @@ searchRoutes.get('/', async (req, res, next) => {
 +        includeAdult: req.user
 +          ? adultContentUserIds.has(req.user.id)
 +          : false,
