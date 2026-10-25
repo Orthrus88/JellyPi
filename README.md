@@ -113,29 +113,6 @@ The Compose file deliberately does not publish the torrent listening port on
 the Pi's normal network interface. Provider-side port forwarding is a separate,
 optional feature and is useful only when the VPN provider supports it.
 
-## Optional per-user adult search
-
-Foreseerr normally excludes adult TMDb results from native text search. The
-optional `compose.foreseerr-adult.yaml` overlay enables those results only for
-an explicit allowlist of Foreseerr user IDs while retaining Foreseerr's
-Jellyfin, AniList, Trakt, and intervention features.
-
-Set the allowed IDs, then include the overlay when starting Foreseerr:
-
-```dotenv
-FORESEERR_ADULT_USER_IDS=1
-```
-
-```bash
-docker compose -f compose.yaml -f compose.foreseerr-adult.yaml up -d --build seerr
-```
-
-No user is allowed when the variable is empty. See
-`foreseerr-adult/README.md` for the fail-safe stable-release updater and upgrade
-behavior. This setting controls search results; use Jellyfin library access
-rules separately when restricted playback accounts must not see downloaded
-adult media.
-
 ## Optional Usenet downloads
 
 SABnzbd is included as an optional Compose profile. The standard quick start

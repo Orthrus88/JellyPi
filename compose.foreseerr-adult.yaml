@@ -1,9 +1,0 @@
-services:
-  seerr:
-    image: jellypi/foreseerr-adult:${FORESEERR_VERSION:-v0.14.1}
-    build:
-      context: ./foreseerr-adult
-      args:
-        FORESEERR_VERSION: ${FORESEERR_VERSION:-v0.14.1}
-    environment:
-      ADULT_CONTENT_USER_IDS: ${FORESEERR_ADULT_USER_IDS:-}
