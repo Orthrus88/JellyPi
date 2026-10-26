@@ -10,7 +10,7 @@ no user accounts, API keys, media history, provider tokens, or VPN credentials.
 | Service | Address | Purpose |
 | --- | --- | --- |
 | Jellyfin | `http://PI_ADDRESS:8096` | Media library and playback |
-| Seerr | `http://PI_ADDRESS:5055` | Friendly movie and series requests |
+| Foreseerr | `http://PI_ADDRESS:5055` | Friendly movie and series requests with optional discovery integrations |
 | Radarr | `http://PI_ADDRESS:7878` | Movie management |
 | Sonarr | `http://PI_ADDRESS:8989` | Series management |
 | Prowlarr | `http://PI_ADDRESS:9696` | Indexer management |
@@ -86,7 +86,7 @@ Use the same internal paths everywhere so the applications agree about files:
 2. Give Radarr downloads the category `radarr` and Sonarr downloads the category
    `sonarr`.
 3. Add Radarr and Sonarr to Prowlarr under **Settings > Apps**.
-4. Connect Seerr to Jellyfin, Radarr, and Sonarr using their internal service
+4. Connect Foreseerr to Jellyfin, Radarr, and Sonarr using their internal service
    names and ports.
 5. Restart the cleanup service after changing `.env`:
 

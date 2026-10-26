@@ -1,0 +1,14 @@
+[Unit]
+Description=Update stock Foreseerr to the latest stable release
+Wants=network-online.target
+After=network-online.target docker.service
+Requires=docker.service
+ConditionPathExists=/opt/media-stack/compose.yaml
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/foreseerr-stable-update
+TimeoutStartSec=20min
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7

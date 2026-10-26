@@ -1,0 +1,11 @@
+[Unit]
+Description=Check nightly for stable stock Foreseerr releases
+
+[Timer]
+OnCalendar=*-*-* 03:00:00 America/Chicago
+Persistent=true
+AccuracySec=1min
+Unit=foreseerr-update.service
+
+[Install]
+WantedBy=timers.target
