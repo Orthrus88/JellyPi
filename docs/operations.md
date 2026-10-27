@@ -257,6 +257,9 @@ Review application truth rather than relying only on container state:
 - Their queues contain no intervention or import-warning rows.
 - Root folders are accessible and report pool free space.
 - Prowlarr can test NZBGeek and at least one torrent indexer.
+- Prowlarr's top-level **Indexers** page lists providers. **Settings >
+  Indexers** lists only optional indexer proxies, so an empty page there is
+  normal when no proxy is configured.
 - SABnzbd can write incomplete and all three category directories.
 - qBittorrent's public IP is the VPN IP and its interface is `tun0`.
 - Bazarr can write a sidecar into both movie and TV roots.
