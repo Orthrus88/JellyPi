@@ -20,7 +20,11 @@ failures=0
 pass() { printf 'PASS  %s\n' "$1"; }
 fail() { printf 'FAIL  %s\n' "$1" >&2; failures=$((failures + 1)); }
 
-docker compose config >/dev/null && pass "Compose configuration" || fail "Compose configuration"
+if docker compose config >/dev/null; then
+  pass "Compose configuration"
+else
+  fail "Compose configuration"
+fi
 
 mapfile -t containers < <(docker compose ps -aq)
 if ((${#containers[@]} == 0)); then
@@ -41,13 +45,17 @@ fi
 if docker inspect gluetun >/dev/null 2>&1 && docker inspect qbittorrent >/dev/null 2>&1; then
   gluetun_id="$(docker inspect -f '{{.Id}}' gluetun)"
   qbit_network="$(docker inspect -f '{{.HostConfig.NetworkMode}}' qbittorrent)"
-  [[ "$qbit_network" == "container:$gluetun_id" ]] \
-    && pass "qBittorrent shares Gluetun network namespace" \
-    || fail "qBittorrent is not bound to Gluetun"
-  docker exec qbittorrent sh -c \
-    "grep -Eq '^Session\\\\(Interface|InterfaceName)=tun0$' /config/qBittorrent/qBittorrent.conf" \
-    && pass "qBittorrent is bound to tun0" \
-    || fail "qBittorrent is not bound to tun0"
+  if [[ "$qbit_network" == "container:$gluetun_id" ]]; then
+    pass "qBittorrent shares Gluetun network namespace"
+  else
+    fail "qBittorrent is not bound to Gluetun"
+  fi
+  if docker exec qbittorrent sh -c \
+    "grep -Eq '^Session\\\\(Interface|InterfaceName)=tun0$' /config/qBittorrent/qBittorrent.conf"; then
+    pass "qBittorrent is bound to tun0"
+  else
+    fail "qBittorrent is not bound to tun0"
+  fi
 fi
 
 declare -A endpoints=(
@@ -89,7 +97,11 @@ done
 
 media_root="${MEDIA_ROOT:-/srv/media}"
 for path in Movies TV; do
-  [[ -d "$media_root/$path" ]] && pass "$media_root/$path exists" || fail "$media_root/$path is missing"
+  if [[ -d "$media_root/$path" ]]; then
+    pass "$media_root/$path exists"
+  else
+    fail "$media_root/$path is missing"
+  fi
 done
 
 if ((failures)); then
