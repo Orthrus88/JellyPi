@@ -34,10 +34,12 @@ sudo mkdir -p \
   "$MEDIA_ROOT/Audiobooks" \
   "$MEDIA_ROOT/Downloads/complete" \
   "$MEDIA_ROOT/Downloads/incomplete" \
-  "$MEDIA_ROOT/Usenet/complete" \
-  "$MEDIA_ROOT/Usenet/incomplete" \
+  "$MEDIA_ROOT/usenet/complete/movies" \
+  "$MEDIA_ROOT/usenet/complete/tv" \
+  "$MEDIA_ROOT/usenet/complete/audiobooks" \
+  "$MEDIA_ROOT/usenet/incomplete" \
   "$MEDIA_ROOT/.jellypi-encoder" \
-  "$CONFIG_ROOT"/{jellyfin,seerr,radarr,sonarr,prowlarr,qbittorrent,gluetun,sabnzbd,download-recovery} \
+  "$CONFIG_ROOT"/{jellyfin,seerr,radarr,sonarr,prowlarr,bazarr,qbittorrent,gluetun,sabnzbd,download-recovery} \
   "$CONFIG_ROOT/chaptarr" \
   "$CONFIG_ROOT/audiobookrequest" \
   "$CONFIG_ROOT/audiobookshelf/config" \

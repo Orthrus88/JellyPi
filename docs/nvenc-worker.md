@@ -8,6 +8,11 @@ The desktop and Pi must see the same media root. It must contain `Movies`, `TV`,
 and `.jellypi-encoder`. Share the Pi's media disk over SMB or NFS, mount it on
 the desktop, and make sure Docker can read and write that mount.
 
+The native Windows worker used by the expanded deployment is included as
+`windows/desktop_encoder.py`. Configure `JELLYPI_MEDIA_SHARE`,
+`JELLYPI_FFMPEG`, and optionally `JELLYPI_WORKER_LABEL` in its scheduled-task
+environment. Launch it with `pythonw.exe` so it does not flash a console window.
+
 ## Requirements
 
 - An NVIDIA GPU with NVENC support
@@ -65,6 +70,8 @@ Each worker creates an atomic claim before touching a file. A worker that is
 already encoding finishes its current file before another worker takes the next
 one. An abandoned claim is recovered after ten minutes. Temporary output stays
 hidden and the original file is replaced only after validation succeeds.
+HDR sources are tone-mapped to BT.709 SDR. A validation failure deletes the
+temporary output so that it cannot permanently block the queue.
 
 Stop or restart the desktop worker with:
 

@@ -5,6 +5,9 @@ requests, downloads, organization, compatibility encoding, and monitoring.
 Every application starts with an empty configuration. The repository contains
 no user accounts, API keys, media history, provider tokens, or VPN credentials.
 
+For the complete data flows, path contract, service checks, maintenance jobs,
+and failure runbooks, use the [operations reference](docs/operations.md).
+
 ## Included services
 
 | Service | Address | Purpose |
@@ -14,6 +17,7 @@ no user accounts, API keys, media history, provider tokens, or VPN credentials.
 | Radarr | `http://PI_ADDRESS:7878` | Movie management |
 | Sonarr | `http://PI_ADDRESS:8989` | Series management |
 | Prowlarr | `http://PI_ADDRESS:9696` | Indexer management |
+| Bazarr | `http://PI_ADDRESS:6767` | English subtitle search and sidecars |
 | qBittorrent | `http://PI_ADDRESS:8080` | Downloads routed through Gluetun |
 | SABnzbd (optional) | `http://PI_ADDRESS:8081` | Usenet downloads |
 | Download recovery (optional) | Background service | Failed Usenet cleanup and replacement searches |
@@ -83,8 +87,8 @@ Use the same internal paths everywhere so the applications agree about files:
 1. Open qBittorrent, replace its temporary password, and copy the same username
    and password into `.env`. Under **Settings > Advanced**, set **Network
    interface** to `tun0`. Leave UPnP/NAT-PMP disabled.
-2. Give Radarr downloads the category `radarr` and Sonarr downloads the category
-   `sonarr`.
+2. Give Radarr downloads the category `movies` and Sonarr downloads the category
+   `tv` in both download clients.
 3. Add Radarr and Sonarr to Prowlarr under **Settings > Apps**.
 4. Connect Foreseerr to Jellyfin, Radarr, and Sonarr using their internal service
    names and ports.
@@ -134,12 +138,13 @@ provider. Enable SSL when the provider supports it. Set these folders under
 
 | SABnzbd setting | Value |
 | --- | --- |
-| Temporary Download Folder | `/data/Usenet/incomplete` |
-| Completed Download Folder | `/data/Usenet/complete` |
+| Temporary Download Folder | `/data/usenet/incomplete` |
+| Completed Download Folder | `/data/usenet/complete` |
 
-Create categories named `radarr` and `sonarr`. In Radarr and Sonarr, add
+Create categories named `movies`, `tv`, and `audiobooks`, with matching folders
+under `/data/usenet/complete`. In Radarr and Sonarr, add
 SABnzbd as a download client using host `sabnzbd`, port `8080`, its API key,
-and the matching category. Give SABnzbd the higher priority if qBittorrent
+and the `movies` or `tv` category. Give SABnzbd the higher priority if qBittorrent
 should serve only as a fallback.
 
 Add NZBGeek or another Newznab-compatible indexer in Prowlarr, then sync it to
@@ -172,6 +177,18 @@ Review recent recovery decisions with:
 ```bash
 docker compose logs --tail=50 download-recovery
 ```
+
+For a conservative retry of monitored, released titles that remain missing
+after the original request search, install the host timer:
+
+```bash
+./scripts/install-missing-search.sh
+```
+
+It searches at most ten episodes and two movies per hourly run, never searches
+while that Arr queue is active, and waits 24 hours before retrying the same
+item. This fills the gap between an initial request search and RSS feeds without
+hammering indexers or queueing an entire library at once.
 
 To disable SABnzbd later, remove `usenet` from `COMPOSE_PROFILES` and run:
 
@@ -208,9 +225,9 @@ Run `./scripts/bootstrap.sh`, then complete the one-time setup:
 5. Create an Audiobookshelf API token, then connect it in AudioBookRequest with
    `http://audiobookshelf:80` and select the audiobook library.
 
-AudioBookRequest's Chaptarr integration currently ships in its nightly image.
-The image name is configurable through `AUDIOBOOKREQUEST_IMAGE`, allowing a
-stable release to be pinned without changing the Compose file.
+AudioBookRequest uses the stable major-version `:1` image by default. The image
+name remains configurable through `AUDIOBOOKREQUEST_IMAGE`, allowing a specific
+release to be pinned without changing the Compose file.
 
 For listening on iPhone, use an Audiobookshelf-compatible client and set its
 server URL to the HTTPS hostname of your reverse proxy. Downloaded books remain
@@ -311,6 +328,22 @@ docker compose up -d --build
 
 Application state is stored below `CONFIG_ROOT`, and media is stored below
 `MEDIA_ROOT`, so updating or recreating containers does not remove either.
+
+To install the optional nightly stable-image updater on a systemd host:
+
+```bash
+./scripts/install-media-stack-updater.sh
+```
+
+It runs at about 03:20 local time, after the dedicated Foreseerr stable-release
+check, validates the Compose file, pulls configured tags, recreates only changed
+containers, and fails the unit when a container does not return to `running`.
+
+Run a non-destructive check of the enabled stack at any time:
+
+```bash
+./scripts/verify-stack.sh
+```
 
 ## Backup
 

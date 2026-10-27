@@ -31,6 +31,15 @@ class AudiobookProfileTests(unittest.TestCase):
         self.assertNotIn("INIT_ROOT_USERNAME", block)
         self.assertNotIn("INIT_ROOT_PASSWORD", block)
 
+    def test_stable_request_image_is_default(self):
+        self.assertIn("markbeep/audiobookrequest:1", self.compose)
+
+    def test_usenet_category_directories_are_bootstrapped(self):
+        for category in ("movies", "tv", "audiobooks"):
+            self.assertIn(
+                f'"$MEDIA_ROOT/usenet/complete/{category}"', self.bootstrap
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

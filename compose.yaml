@@ -73,6 +73,20 @@ services:
       - ${CONFIG_ROOT:-/srv/jellypi/config}/prowlarr:/config
     restart: unless-stopped
 
+  bazarr:
+    image: lscr.io/linuxserver/bazarr:latest
+    container_name: bazarr
+    environment: *media-environment
+    ports:
+      - "6767:6767"
+    volumes:
+      - ${CONFIG_ROOT:-/srv/jellypi/config}/bazarr:/config
+      - ${MEDIA_ROOT:-/srv/media}:/data
+    depends_on:
+      - radarr
+      - sonarr
+    restart: unless-stopped
+
   sabnzbd:
     profiles:
       - usenet
@@ -148,7 +162,7 @@ services:
   audiobookrequest:
     profiles:
       - audiobooks
-    image: ${AUDIOBOOKREQUEST_IMAGE:-markbeep/audiobookrequest:nightly}
+    image: ${AUDIOBOOKREQUEST_IMAGE:-markbeep/audiobookrequest:1}
     container_name: audiobookrequest
     environment:
       TZ: ${TZ:-Etc/UTC}

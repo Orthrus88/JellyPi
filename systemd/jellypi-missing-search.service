@@ -1,0 +1,12 @@
+[Unit]
+Description=Retry monitored released media missing from Radarr and Sonarr
+After=docker.service network-online.target remote-fs.target
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/etc/default/jellypi-missing-search
+ExecStart=/usr/local/sbin/jellypi-missing-search.py
+Nice=15
+IOSchedulingClass=idle

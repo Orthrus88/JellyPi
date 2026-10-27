@@ -1,0 +1,11 @@
+[Unit]
+Description=Update the JellyPi container stack nightly
+
+[Timer]
+OnCalendar=*-*-* 03:20:00
+Persistent=true
+RandomizedDelaySec=5min
+Unit=jellypi-media-stack-update.service
+
+[Install]
+WantedBy=timers.target

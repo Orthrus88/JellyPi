@@ -1,0 +1,12 @@
+[Unit]
+Description=Periodically retry monitored released media
+
+[Timer]
+OnBootSec=20min
+OnUnitActiveSec=1h
+RandomizedDelaySec=10min
+Persistent=true
+Unit=jellypi-missing-search.service
+
+[Install]
+WantedBy=timers.target

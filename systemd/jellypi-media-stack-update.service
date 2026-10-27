@@ -1,0 +1,14 @@
+[Unit]
+Description=Update JellyPi containers to their configured stable image tags
+After=network-online.target docker.service remote-fs.target
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/etc/default/jellypi-media-stack-update
+ExecStart=/usr/local/sbin/jellypi-media-stack-update
+TimeoutStartSec=30min
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
