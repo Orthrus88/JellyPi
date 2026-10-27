@@ -1,0 +1,12 @@
+[Unit]
+Description=Repair subtitle sidecar names after media changes
+
+[Timer]
+OnBootSec=5min
+OnUnitInactiveSec=10min
+Persistent=true
+RandomizedDelaySec=1min
+Unit=jellypi-subtitle-sidecars.service
+
+[Install]
+WantedBy=timers.target

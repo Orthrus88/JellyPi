@@ -262,21 +262,22 @@ Linux setup, GPU check, shared-storage requirement, and start/stop commands.
 
 ### EVO-compatible subtitles
 
-Some direct-play clients, including EVO Player on PS5, read subtitle tracks
-from the media container and do not list Bazarr's external SRT sidecars. Install
-the optional subtitle embedder after Bazarr is configured:
+Some direct-play clients, including EVO Player on PS5, require Bazarr's
+external English subtitle to have exactly the same basename as the video.
+Run the sidecar normalizer after Bazarr or a media-renaming step:
 
 ```bash
-./scripts/install-subtitle-embedder.sh
+./scripts/install-subtitle-sidecars.sh
 ```
 
-The hourly worker finds English SRT sidecars next to MKV and MP4 files, removes
-older embedded subtitle tracks, and embeds one cleaned English track. Video and
-audio streams are copied without encoding. Each output is checked for duration
-and subtitle format before it atomically replaces the original. The worker runs
-at idle I/O and CPU priority and pauses while Jellyfin reports active playback.
-Progress is recorded in
-`/var/lib/jellypi/subtitle-embed-state.json`.
+The worker leaves every correctly matched English sidecar unchanged, including
+`.en.hi.srt` and anime subtitles. It recovers an orphaned English sidecar after
+a movie is renamed when the folder contains exactly one video, giving the
+recovered file the canonical `Video Name.en.srt` name. It never guesses in
+multi-episode folders, and it does not modify or transcode the media file.
+The timer checks every ten minutes and records its latest result in
+`/var/lib/jellypi/subtitle-sidecars.json`. The installer also disables the
+older subtitle-embedding timer when upgrading an existing JellyPi host.
 
 ## VPN recovery check
 
