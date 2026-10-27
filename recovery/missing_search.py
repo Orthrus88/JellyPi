@@ -70,57 +70,67 @@ def aired(record: dict, timestamp: float) -> bool:
         return False
 
 
+def queued_ids(queue: dict, field: str) -> set[int]:
+    return {
+        item[field]
+        for item in queue.get("records", [])
+        if isinstance(item.get(field), int)
+    }
+
+
 def main() -> None:
     timestamp = datetime.now(timezone.utc).timestamp()
     state = load_state()
     searched: list[str] = []
 
     sonarr_key = api_key(SONARR_CONFIG)
-    sonarr_queue = request(SONARR_URL, sonarr_key, "queue?page=1&pageSize=1")
-    if not sonarr_queue.get("totalRecords"):
-        wanted = request(
-            SONARR_URL,
-            sonarr_key,
-            "wanted/missing?page=1&pageSize=1000&sortKey=airDateUtc&sortDirection=ascending&includeSeries=true",
-        ).get("records", [])
-        episodes = [
-            item
-            for item in wanted
-            if item.get("monitored", True)
-            and aired(item, timestamp)
-            and due(state, f"sonarr:{item['id']}", timestamp)
-        ][:SONARR_BATCH]
-        if episodes:
-            ids = [item["id"] for item in episodes]
+    sonarr_queue = request(SONARR_URL, sonarr_key, "queue?page=1&pageSize=1000")
+    queued_episodes = queued_ids(sonarr_queue, "episodeId")
+    wanted = request(
+        SONARR_URL,
+        sonarr_key,
+        "wanted/missing?page=1&pageSize=1000&sortKey=airDateUtc&sortDirection=ascending&includeSeries=true",
+    ).get("records", [])
+    episodes = [
+        item
+        for item in wanted
+        if item.get("monitored", True)
+        and item["id"] not in queued_episodes
+        and aired(item, timestamp)
+        and due(state, f"sonarr:{item['id']}", timestamp)
+    ][:SONARR_BATCH]
+    if episodes:
+        ids = [item["id"] for item in episodes]
+        if not DRY_RUN:
+            request(SONARR_URL, sonarr_key, "command", {"name": "EpisodeSearch", "episodeIds": ids})
+        for item in episodes:
             if not DRY_RUN:
-                request(SONARR_URL, sonarr_key, "command", {"name": "EpisodeSearch", "episodeIds": ids})
-            for item in episodes:
-                if not DRY_RUN:
-                    state[f"sonarr:{item['id']}"] = timestamp
-                searched.append(
-                    f"episode {item.get('series', {}).get('title')} "
-                    f"S{item.get('seasonNumber'):02d}E{item.get('episodeNumber'):02d}"
-                )
+                state[f"sonarr:{item['id']}"] = timestamp
+            searched.append(
+                f"episode {item.get('series', {}).get('title')} "
+                f"S{item.get('seasonNumber'):02d}E{item.get('episodeNumber'):02d}"
+            )
 
     radarr_key = api_key(RADARR_CONFIG)
-    radarr_queue = request(RADARR_URL, radarr_key, "queue?page=1&pageSize=1")
-    if not radarr_queue.get("totalRecords"):
-        movies = [
-            item
-            for item in request(RADARR_URL, radarr_key, "movie")
-            if item.get("monitored")
-            and not item.get("hasFile")
-            and item.get("status") in {"released", "inCinemas"}
-            and due(state, f"radarr:{item['id']}", timestamp)
-        ][:RADARR_BATCH]
-        if movies:
-            ids = [item["id"] for item in movies]
+    radarr_queue = request(RADARR_URL, radarr_key, "queue?page=1&pageSize=1000")
+    queued_movies = queued_ids(radarr_queue, "movieId")
+    movies = [
+        item
+        for item in request(RADARR_URL, radarr_key, "movie")
+        if item.get("monitored")
+        and item["id"] not in queued_movies
+        and not item.get("hasFile")
+        and item.get("status") in {"released", "inCinemas"}
+        and due(state, f"radarr:{item['id']}", timestamp)
+    ][:RADARR_BATCH]
+    if movies:
+        ids = [item["id"] for item in movies]
+        if not DRY_RUN:
+            request(RADARR_URL, radarr_key, "command", {"name": "MoviesSearch", "movieIds": ids})
+        for item in movies:
             if not DRY_RUN:
-                request(RADARR_URL, radarr_key, "command", {"name": "MoviesSearch", "movieIds": ids})
-            for item in movies:
-                if not DRY_RUN:
-                    state[f"radarr:{item['id']}"] = timestamp
-                searched.append(f"movie {item.get('title')} ({item.get('year')})")
+                state[f"radarr:{item['id']}"] = timestamp
+            searched.append(f"movie {item.get('title')} ({item.get('year')})")
 
     if not DRY_RUN:
         save_state(state)

@@ -34,6 +34,17 @@ class MissingSearchTests(unittest.TestCase):
         )
         self.assertTrue(MODULE.due({}, "sonarr:1", now))
 
+    def test_only_the_specific_queued_media_is_excluded(self):
+        queue = {
+            "totalRecords": 2,
+            "records": [
+                {"movieId": 7, "status": "downloading"},
+                {"movieId": 11, "status": "completed"},
+            ],
+        }
+        self.assertEqual(MODULE.queued_ids(queue, "movieId"), {7, 11})
+        self.assertNotIn(9, MODULE.queued_ids(queue, "movieId"))
+
 
 if __name__ == "__main__":
     unittest.main()

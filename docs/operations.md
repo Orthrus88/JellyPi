@@ -141,6 +141,10 @@ Tracked failures remain with the Arr blocklist/retry workflow. Detached manual
 failures are mapped back to a monitored movie or episode, searched once, and
 then removed from SAB history. Its state file prevents duplicate searches.
 
+The missing-media timer searches a small hourly batch and applies a 24-hour
+cooldown per item. It excludes only movies and episodes already represented in
+their Arr queue; an unrelated download does not pause every missing search.
+
 After restoring files outside an Arr import, run a refresh and scan before any
 missing-title search:
 

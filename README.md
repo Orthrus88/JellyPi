@@ -185,10 +185,11 @@ after the original request search, install the host timer:
 ./scripts/install-missing-search.sh
 ```
 
-It searches at most ten episodes and two movies per hourly run, never searches
-while that Arr queue is active, and waits 24 hours before retrying the same
-item. This fills the gap between an initial request search and RSS feeds without
-hammering indexers or queueing an entire library at once.
+It searches at most ten episodes and two movies per hourly run, skips the
+specific movies or episodes already present in an Arr queue, and waits 24 hours
+before retrying the same item. This fills the gap between an initial request
+search and RSS feeds without hammering indexers or queueing an entire library
+at once.
 
 To disable SABnzbd later, remove `usenet` from `COMPOSE_PROFILES` and run:
 
