@@ -237,6 +237,10 @@ and request services need public hostnames.
 
 ## Compatibility encoder
 
+The feasibility and implementation boundary for preserving originals as
+Jellyfin alternate versions is documented in the
+[pre-transcoding plugin design](docs/pretranscoding-plugin.md).
+
 The encoder waits 15 minutes after a file changes so it does not touch an active
 download or import. A file is left alone when it is already:
 
