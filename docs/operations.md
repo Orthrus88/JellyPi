@@ -23,6 +23,7 @@ DNS account details outside this repository.
 | Chaptarr | 8789 | Audiobook search, import, and naming | `CONFIG_ROOT/chaptarr` |
 | AudioBookRequest | 8000 | Audiobook requests | `CONFIG_ROOT/audiobookrequest` |
 | Encoder dashboard | 8097 | Queue, worker, and storage visibility | encoder state directory |
+| Dispatcharr | 9191 | Optional IPTV channel, guide, and stream management | `/opt/dispatcharr/data` on its host |
 
 In the expanded layout, Jellyfin, the reverse proxy, Samba, and the encoder
 dashboard run natively on the main Pi. The application containers run on the
@@ -112,6 +113,26 @@ item remaining for more than one cleanup interval, an Arr queue item marked
 
 Adding one book may add the author's catalog to Chaptarr. Those other books
 remain unmonitored unless the user explicitly monitors them.
+
+## Optional live TV with Dispatcharr
+
+The expanded deployment runs Dispatcharr on encoder Node 2 at
+`http://192.168.1.12:9191`. Its Compose project is
+`/opt/dispatcharr/compose.yaml`, and all application state is bind-mounted at
+`/opt/dispatcharr/data`. Docker is enabled at boot and the container uses the
+`unless-stopped` restart policy.
+
+Dispatcharr starts empty. Add a lawful M3U or Xtream Codes source and its EPG,
+select the groups to import, and create channels before connecting it to
+Jellyfin. On Dispatcharr's Channels page, use the generated HDHR or M3U link as
+the Jellyfin tuner and the generated EPG link as the guide data source. Leave
+the Jellyfin simultaneous-stream limit at `0` for an M3U tuner so Dispatcharr
+can enforce the provider limit.
+
+Node 2 has no supported video GPU inside Dispatcharr. Prefer redirect, proxy,
+or FFmpeg stream-copy profiles for compatible sources. CPU transcoding of
+multiple live streams can compete with the node's media-encoder service and is
+not part of the supported baseline.
 
 ## Downloader and VPN invariants
 
@@ -277,6 +298,9 @@ Review application truth rather than relying only on container state:
 - Bazarr can write a sidecar into both movie and TV roots.
 - Jellyfin can read the pool and finishes a library scan.
 - The encoder dashboard reports fresh heartbeats and no unexplained failures.
+- Dispatcharr returns HTTP 200 on port 9191, accepts the administrator login,
+  and has no unexpected restart loop. An empty channel list is normal before a
+  source is configured.
 
 ## Incident runbook
 
