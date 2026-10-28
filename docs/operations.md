@@ -132,6 +132,17 @@ way. New groups are not enabled automatically. Imported groups use
 next-available channel numbering, and channels removed from the source are
 removed on a later sync after Dispatcharr's seven-day stale retention period.
 
+The `IPTV-org US fallbacks` account imports
+`https://iptv-org.github.io/iptv/raw/us.m3u` every 24 hours. Every group and
+automatic channel sync is disabled for this account, so its larger raw stream
+set cannot create duplicate channels or change the curated lineup. Use it only
+to attach a verified alternate source to an existing channel, then put the
+working source first in that channel's expanded stream list. For example,
+Disney Junior uses the responding 576p HEVC source first and retains the dead
+480p source second in case it later recovers. The raw fallback account imported
+1,081 stream records without changing the 682-channel lineup on October 28,
+2026.
+
 The `IPTV-raw` account imports Free-TV's provider playlist from
 `https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8`. Only its
 `USA` group is enabled, new groups are not enabled automatically, and provider
@@ -145,6 +156,14 @@ Jellyfin consumes Dispatcharr's generated M3U at
 `http://192.168.1.12:9191/output/m3u?tvg_id_source=tvg_id` with a
 simultaneous-stream limit of `0`. The `tvg_id_source` parameter preserves the
 IPTV-org channel IDs needed to match guide listings.
+
+Keep Dispatcharr's **Direct stream URLs** M3U option disabled for Jellyfin.
+Enabling it would make Jellyfin connect to the first provider URL directly,
+but the Roku would still receive the live stream from Jellyfin. It would also
+bypass Dispatcharr's buffering detection and automatic source failover. The
+supported path is provider -> Dispatcharr copy/remux -> Jellyfin remux as
+needed -> client; neither server performs video encoding when the selected
+source and client codecs are compatible.
 
 The combined IPTV-org EPG runs separately on Node 2 at
 `http://192.168.1.12:9200/guide.xml`. Its Compose project and generated files
