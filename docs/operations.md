@@ -122,12 +122,31 @@ The expanded deployment runs Dispatcharr on encoder Node 2 at
 `/opt/dispatcharr/data`. Docker is enabled at boot and the container uses the
 `unless-stopped` restart policy.
 
-Dispatcharr starts empty. Add a lawful M3U or Xtream Codes source and its EPG,
+The current deployment imports IPTV-org's United States playlist from
+`https://iptv-org.github.io/iptv/countries/us.m3u`. It refreshes every 24 hours
+and auto-syncs 174 channels from the sports, news, outdoor, entertainment/news,
+and weather groups. New groups are not enabled automatically. Imported groups
+use next-available channel numbering, and channels removed from the source are
+removed on a later sync after Dispatcharr's seven-day stale retention period.
+
+Jellyfin consumes Dispatcharr's generated M3U at
+`http://192.168.1.12:9191/output/m3u` with a simultaneous-stream limit of `0`.
+In Jellyfin, open **Live TV**, change the view from **Programs** to
+**Channels**, and select a station. Programs and the grid remain empty until a
+reliable XMLTV/EPG source is configured. Do not attach an unverified or stale
+guide URL merely to populate those views.
+
+For another source, add a lawful M3U or Xtream Codes account and its EPG,
 select the groups to import, and create channels before connecting it to
 Jellyfin. On Dispatcharr's Channels page, use the generated HDHR or M3U link as
 the Jellyfin tuner and the generated EPG link as the guide data source. Leave
 the Jellyfin simultaneous-stream limit at `0` for an M3U tuner so Dispatcharr
-can enforce the provider limit.
+can enforce any provider limit.
+
+IPTV-org entries are community-maintained public stream links. Individual
+channels may be offline, geo-blocked, or replaced upstream even while the
+playlist and Dispatcharr are healthy. Confirm a failure in Dispatcharr's
+channel preview before troubleshooting Jellyfin.
 
 Node 2 has no supported video GPU inside Dispatcharr. Prefer redirect, proxy,
 or FFmpeg stream-copy profiles for compatible sources. CPU transcoding of
