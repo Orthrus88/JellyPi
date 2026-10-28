@@ -259,6 +259,14 @@ the generator URL as an XMLTV source, and use Dispatcharr's `/output/m3u` and
 same channel identifiers. After the XMLTV import succeeds, run **Channels >
 Auto-Match EPG** in Dispatcharr so each supported channel receives its listing.
 
+The deployment may combine multiple providers. Enable only the groups you
+intend to publish, use provider numbering with next-available fallback when the
+source supplies channel numbers, and attach duplicate provider streams to an
+existing channel as fallbacks instead of creating duplicate channels. A small,
+country-specific XMLTV feed is suitable for a Pi; avoid all-source EPG archives
+that are hundreds of megabytes compressed. Review fuzzy EPG matches before
+keeping them because similarly named channels can carry different schedules.
+
 The guide refreshes at 3:00 AM and 7:00 PM local time and covers the current
 UTC date by default. Both values are configurable in `.env`. A channel can
 still play when IPTV-org has no compatible English guide definition; only its

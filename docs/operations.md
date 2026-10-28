@@ -124,10 +124,22 @@ The expanded deployment runs Dispatcharr on encoder Node 2 at
 
 The current deployment imports IPTV-org's United States playlist from
 `https://iptv-org.github.io/iptv/countries/us.m3u`. It refreshes every 24 hours
-and auto-syncs 174 channels from the sports, news, outdoor, entertainment/news,
-and weather groups. New groups are not enabled automatically. Imported groups
-use next-available channel numbering, and channels removed from the source are
-removed on a later sync after Dispatcharr's seven-day stale retention period.
+and currently auto-syncs 109 channels from the selected sports, national news,
+outdoor, entertainment/news, and weather groups. Local news, non-US news, and
+duplicate news/weather entries are excluded by persistent M3U filters. New
+groups are not enabled automatically. Imported groups use next-available
+channel numbering, and channels removed from the source are removed on a later
+sync after Dispatcharr's seven-day stale retention period.
+
+The `IPTV-raw` account imports Free-TV's provider playlist from
+`https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8`. Only its
+`USA` group is enabled, new groups are not enabled automatically, and provider
+channel numbers are preferred with next-available fallback numbering. Two
+entries without guide IDs (`Botflix TV` and `Botflix Radioo`) are excluded. Six
+overlapping services are attached as fallback streams to existing channels:
+America's Voice, CBS News, NBC News, Newsmax TV, Reuters TV, and Stadium. The
+remaining 16 services are separate channels, producing 125 channel objects in
+the current combined lineup.
 
 Jellyfin consumes Dispatcharr's generated M3U at
 `http://192.168.1.12:9191/output/m3u?tvg_id_source=tvg_id` with a
@@ -144,6 +156,17 @@ change, run **Channels > Auto-Match EPG** so supported channels are assigned.
 Dispatcharr publishes its normalized guide at
 `http://192.168.1.12:9191/output/epg?tvg_id_source=tvg_id`; Jellyfin uses that
 Dispatcharr URL as its XMLTV provider.
+
+The Free-TV account also uses the targeted EPGShare US feed at
+`https://epgshare01.online/epgshare01/epg_ripper_US2.xml.gz`. Dispatcharr imports
+it as `EPGShare US2` every 24 hours. The feed currently contains roughly 785
+guide channels and is small enough for the Pi. Seven provider channels have
+verified mappings: BUZZR, Retro TV, Biz TV, Rev'n, CNBC, Bloomberg, and Court
+TV. Do not use the roughly 200 MB compressed `ALL_SOURCES` feed on a Pi, and do
+not restore the retired `US1` URL. Leave unmatched provider channels without a
+schedule instead of accepting a weak fuzzy match; for example, BBC Home must
+not be mapped to BBC America, Music Channel must not be mapped to MTV, and
+Stryk TV must not be mapped to Story.
 
 Run `python scripts/generate-iptv-org-epg-channels.py channels.xml` from this
 repository whenever the enabled IPTV-org groups change, then replace
