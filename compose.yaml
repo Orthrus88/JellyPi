@@ -175,6 +175,40 @@ services:
       - chaptarr
     restart: unless-stopped
 
+  dispatcharr:
+    profiles:
+      - iptv
+    image: ghcr.io/dispatcharr/dispatcharr:latest
+    container_name: dispatcharr
+    environment:
+      DISPATCHARR_ENV: aio
+      REDIS_HOST: localhost
+      CELERY_BROKER_URL: redis://localhost:6379/0
+      DISPATCHARR_LOG_LEVEL: info
+      TZ: ${TZ:-Etc/UTC}
+    ports:
+      - "${DISPATCHARR_PORT:-9191}:9191"
+    volumes:
+      - ${CONFIG_ROOT:-/srv/jellypi/config}/dispatcharr:/data
+    restart: unless-stopped
+
+  iptv-epg:
+    profiles:
+      - iptv
+    image: ghcr.io/iptv-org/epg:master
+    container_name: iptv-epg
+    environment:
+      TZ: ${TZ:-Etc/UTC}
+      CRON_SCHEDULE: "${IPTV_EPG_CRON:-0 3,19 * * *}"
+      MAX_CONNECTIONS: "${IPTV_EPG_MAX_CONNECTIONS:-15}"
+      DAYS: "${IPTV_EPG_DAYS:-1}"
+      RUN_AT_STARTUP: "true"
+    ports:
+      - "${IPTV_EPG_PORT:-9200}:3000"
+    volumes:
+      - ${CONFIG_ROOT:-/srv/jellypi/config}/iptv-epg/channels.xml:/epg/public/channels.xml:ro
+    restart: unless-stopped
+
   gluetun:
     image: qmcgaw/gluetun:latest
     container_name: gluetun

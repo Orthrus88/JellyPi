@@ -235,6 +235,35 @@ server URL to the HTTPS hostname of your reverse proxy. Downloaded books remain
 available offline. Keep Chaptarr private to the home network; only the playback
 and request services need public hostnames.
 
+## Optional live TV and guide
+
+The `iptv` profile adds Dispatcharr plus IPTV-org's EPG generator. Dispatcharr
+normalizes M3U channels for Jellyfin, while the generator builds a local XMLTV
+guide from IPTV-org's current channel and guide metadata.
+
+Generate the channel map before starting the profile:
+
+```bash
+mkdir -p /srv/jellypi/config/iptv-epg
+python3 scripts/generate-iptv-org-epg-channels.py \
+  /srv/jellypi/config/iptv-epg/channels.xml
+```
+
+Set `COMPOSE_PROFILES=iptv` (or add `iptv` to the existing comma-separated
+value), then run `docker compose up -d`. Dispatcharr is available at
+`http://PI_ADDRESS:9191`, and the generated XMLTV guide is served at
+`http://PI_ADDRESS:9200/guide.xml`. Add a lawful M3U source in Dispatcharr, add
+the generator URL as an XMLTV source, and use Dispatcharr's `/output/m3u` and
+`/output/epg` endpoints in Jellyfin. For IPTV-org playlists, append
+`?tvg_id_source=tvg_id` to both output URLs so Jellyfin and the guide share the
+same channel identifiers. After the XMLTV import succeeds, run **Channels >
+Auto-Match EPG** in Dispatcharr so each supported channel receives its listing.
+
+The guide refreshes at 3:00 AM and 7:00 PM local time and covers the current
+UTC date by default. Both values are configurable in `.env`. A channel can
+still play when IPTV-org has no compatible English guide definition; only its
+schedule will be blank.
+
 ## Compatibility encoder
 
 The feasibility and implementation boundary for preserving originals as

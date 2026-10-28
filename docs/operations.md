@@ -130,11 +130,27 @@ use next-available channel numbering, and channels removed from the source are
 removed on a later sync after Dispatcharr's seven-day stale retention period.
 
 Jellyfin consumes Dispatcharr's generated M3U at
-`http://192.168.1.12:9191/output/m3u` with a simultaneous-stream limit of `0`.
-In Jellyfin, open **Live TV**, change the view from **Programs** to
-**Channels**, and select a station. Programs and the grid remain empty until a
-reliable XMLTV/EPG source is configured. Do not attach an unverified or stale
-guide URL merely to populate those views.
+`http://192.168.1.12:9191/output/m3u?tvg_id_source=tvg_id` with a
+simultaneous-stream limit of `0`. The `tvg_id_source` parameter preserves the
+IPTV-org channel IDs needed to match guide listings.
+
+The IPTV-org EPG generator runs separately on Node 2 at
+`http://192.168.1.12:9200/guide.xml`. Its Compose project and generated
+`channels.xml` are in `/opt/iptv-epg`. It builds the current UTC date at startup
+and every day at 3:00 AM and 7:00 PM local time. The second run maintains guide
+coverage after UTC rolls over during the Chicago evening. Dispatcharr imports
+that URL as the `IPTV-org Generated EPG` source. After an import or channel-list
+change, run **Channels > Auto-Match EPG** so supported channels are assigned.
+Dispatcharr publishes its normalized guide at
+`http://192.168.1.12:9191/output/epg?tvg_id_source=tvg_id`; Jellyfin uses that
+Dispatcharr URL as its XMLTV provider.
+
+Run `python scripts/generate-iptv-org-epg-channels.py channels.xml` from this
+repository whenever the enabled IPTV-org groups change, then replace
+`/opt/iptv-epg/channels.xml` and recreate the generator container. The current
+selection produces 110 full stream-ID mappings for about 105 unique channels.
+Channels without a compatible English listing in IPTV-org's guide API remain
+playable but show no schedule.
 
 For another source, add a lawful M3U or Xtream Codes account and its EPG,
 select the groups to import, and create channels before connecting it to
@@ -318,8 +334,12 @@ Review application truth rather than relying only on container state:
 - Jellyfin can read the pool and finishes a library scan.
 - The encoder dashboard reports fresh heartbeats and no unexplained failures.
 - Dispatcharr returns HTTP 200 on port 9191, accepts the administrator login,
-  and has no unexpected restart loop. An empty channel list is normal before a
-  source is configured.
+  and has no unexpected restart loop. Its M3U contains the expected channel
+  count, and `/output/epg` returns XMLTV data with both `channel` and
+  `programme` elements.
+- The IPTV-org generator returns HTTP 200 for `/guide.xml`, its latest run
+  completed without a fatal error, and Jellyfin's Live TV guide shows program
+  titles for channels covered by the generated XMLTV data.
 
 ## Incident runbook
 
