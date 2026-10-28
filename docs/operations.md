@@ -124,12 +124,13 @@ The expanded deployment runs Dispatcharr on encoder Node 2 at
 
 The current deployment imports IPTV-org's United States playlist from
 `https://iptv-org.github.io/iptv/countries/us.m3u`. It refreshes every 24 hours
-and currently auto-syncs 109 channels from the selected sports, national news,
-outdoor, entertainment/news, and weather groups. Local news, non-US news, and
-duplicate news/weather entries are excluded by persistent M3U filters. New
-groups are not enabled automatically. Imported groups use next-available
-channel numbering, and channels removed from the source are removed on a later
-sync after Dispatcharr's seven-day stale retention period.
+and currently imports 43 selected groups. Persistent filters remove 78
+non-English entries, leaving 778 English streams arranged as 666 channels.
+Duplicate feeds for the same service are attached to one channel as fallback
+streams; the current cleanup consolidated 112 duplicate channel objects this
+way. New groups are not enabled automatically. Imported groups use
+next-available channel numbering, and channels removed from the source are
+removed on a later sync after Dispatcharr's seven-day stale retention period.
 
 The `IPTV-raw` account imports Free-TV's provider playlist from
 `https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8`. Only its
@@ -138,21 +139,27 @@ channel numbers are preferred with next-available fallback numbering. Two
 entries without guide IDs (`Botflix TV` and `Botflix Radioo`) are excluded. Six
 overlapping services are attached as fallback streams to existing channels:
 America's Voice, CBS News, NBC News, Newsmax TV, Reuters TV, and Stadium. The
-remaining 16 services are separate channels, producing 125 channel objects in
-the current combined lineup.
+remaining services are separate channels.
 
 Jellyfin consumes Dispatcharr's generated M3U at
 `http://192.168.1.12:9191/output/m3u?tvg_id_source=tvg_id` with a
 simultaneous-stream limit of `0`. The `tvg_id_source` parameter preserves the
 IPTV-org channel IDs needed to match guide listings.
 
-The IPTV-org EPG generator runs separately on Node 2 at
-`http://192.168.1.12:9200/guide.xml`. Its Compose project and generated
-`channels.xml` are in `/opt/iptv-epg`. It builds the current UTC date at startup
-and every day at 3:00 AM and 7:00 PM local time. The second run maintains guide
-coverage after UTC rolls over during the Chicago evening. Dispatcharr imports
-that URL as the `IPTV-org Generated EPG` source. After an import or channel-list
-change, run **Channels > Auto-Match EPG** so supported channels are assigned.
+The combined IPTV-org EPG runs separately on Node 2 at
+`http://192.168.1.12:9200/guide.xml`. Its Compose project and generated files
+are in `/opt/iptv-epg`. Root cron runs
+`/opt/iptv-epg/update-combined-guide.sh` every day at 3:00 AM and 7:00 PM local
+time. The script exports the current Dispatcharr channel IDs, rebuilds the
+IPTV-org map, downloads provider XML feeds once, scrapes the remaining small
+set of listings, merges the results, refreshes Dispatcharr, and reapplies only
+exact or explicitly safe EPG matches. Dispatcharr imports the result as the
+`IPTV-org Generated EPG` source. The verified October 27, 2026 snapshot contains
+371 guide channels and 12,274 programmes. Combined with safe EPGShare mappings,
+401 of the 666 IPTV-org channels have an EPG assignment and 363 currently have
+future programme data. Channels without dependable upstream schedules remain
+playable and intentionally show no programme information.
+
 Dispatcharr publishes its normalized guide at
 `http://192.168.1.12:9191/output/epg?tvg_id_source=tvg_id`; Jellyfin uses that
 Dispatcharr URL as its XMLTV provider.
@@ -168,12 +175,9 @@ schedule instead of accepting a weak fuzzy match; for example, BBC Home must
 not be mapped to BBC America, Music Channel must not be mapped to MTV, and
 Stryk TV must not be mapped to Story.
 
-Run `python scripts/generate-iptv-org-epg-channels.py channels.xml` from this
-repository whenever the enabled IPTV-org groups change, then replace
-`/opt/iptv-epg/channels.xml` and recreate the generator container. The current
-selection produces 110 full stream-ID mappings for about 105 unique channels.
-Channels without a compatible English listing in IPTV-org's guide API remain
-playable but show no schedule.
+The full EPG rebuild is safe to run manually with
+`sudo /opt/iptv-epg/update-combined-guide.sh`. Do this after a large group
+change instead of hand-editing `channels.xml`.
 
 For another source, add a lawful M3U or Xtream Codes account and its EPG,
 select the groups to import, and create channels before connecting it to
@@ -187,10 +191,18 @@ channels may be offline, geo-blocked, or replaced upstream even while the
 playlist and Dispatcharr are healthy. Confirm a failure in Dispatcharr's
 channel preview before troubleshooting Jellyfin.
 
-Node 2 has no supported video GPU inside Dispatcharr. Prefer redirect, proxy,
-or FFmpeg stream-copy profiles for compatible sources. CPU transcoding of
-multiple live streams can compete with the node's media-encoder service and is
-not part of the supported baseline.
+Node 2 has no supported video GPU inside Dispatcharr. IPTV-org channels use the
+custom `FFmpeg Single Program` stream profile. Its parameters intentionally do
+not contain `-map 0`: adaptive HLS masters can expose several video renditions
+and audio tracks, and mapping all of them causes needless bandwidth, timestamp
+errors, and buffering. The deployed command lets FFmpeg select the best video
+and default audio, then uses `-c copy` to remux them into MPEG-TS without video
+or audio encoding. Apply this profile directly to IPTV-org channel objects;
+the M3U-account profile is not honored by Dispatcharr's generated live-proxy
+URLs in the deployed version. Root cron runs the deployed copy of
+`scripts/apply-dispatcharr-iptv-profile.py` every 15 minutes so newly imported
+channels receive the same profile. CPU transcoding of live TV is not part of
+the supported baseline.
 
 ## Downloader and VPN invariants
 
