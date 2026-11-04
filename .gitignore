@@ -6,6 +6,8 @@ media/
 *.pid
 __pycache__/
 .pytest_cache/
+**/bin/
+**/obj/
 .DS_Store
 Thumbs.db
 

@@ -1,2 +1,0 @@
-C:\Users\graha\AppData\Local\Temp\jellypi-watchdog-verify\EncoderWatchdog.pdb
-C:\Users\graha\AppData\Local\Temp\jellypi-watchdog-verify\EncoderWatchdog.exe
