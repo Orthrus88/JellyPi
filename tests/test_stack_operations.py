@@ -47,6 +47,27 @@ class StackOperationsTests(unittest.TestCase):
         self.assertIn("zscale=transfer=linear", source)
         self.assertIn("temp.unlink(missing_ok=True)", source)
 
+    def test_windows_watchdog_is_windowless_and_heartbeat_aware(self):
+        project = (
+            ROOT / "windows" / "EncoderWatchdog" / "EncoderWatchdog.csproj"
+        ).read_text(encoding="utf-8")
+        program = (
+            ROOT / "windows" / "EncoderWatchdog" / "Program.cs"
+        ).read_text(encoding="utf-8")
+        installer = (
+            ROOT / "windows" / "install_encoder_watchdog.ps1"
+        ).read_text(encoding="utf-8")
+        worker = (ROOT / "windows" / "desktop_encoder.py").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("<OutputType>WinExe</OutputType>", project)
+        self.assertIn("MaxHeartbeatAgeSeconds", program)
+        self.assertIn("worker.Kill(entireProcessTree: true)", program)
+        self.assertIn("New-TimeSpan -Minutes 1", installer)
+        self.assertIn("$programRoot 'desktop-encoder.pid.json'", installer)
+        self.assertIn("desktop-encoder.pid.json", worker)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -11,7 +11,11 @@ the desktop, and make sure Docker can read and write that mount.
 The native Windows worker used by the expanded deployment is included as
 `windows/desktop_encoder.py`. Configure `JELLYPI_MEDIA_SHARE`,
 `JELLYPI_FFMPEG`, and optionally `JELLYPI_WORKER_LABEL` in its scheduled-task
-environment. Launch it with `pythonw.exe` so it does not flash a console window.
+environment. Install the windowless heartbeat watchdog with
+`windows/install_encoder_watchdog.ps1`. It checks the worker every minute,
+restarts a missing worker, and replaces a hung worker when its shared heartbeat
+is more than two minutes old. The task launches a compiled `WinExe`, so its
+keepalive checks do not flash a console window.
 
 ## Requirements
 

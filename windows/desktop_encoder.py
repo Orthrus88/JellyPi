@@ -29,6 +29,10 @@ PAUSE_DURING_RECOVERY = os.environ.get('JELLYPI_PAUSE_DURING_RECOVERY', 'false')
     '1', 'true', 'yes'
 }
 LOCAL_LOCK = APP_DIR / 'desktop-encoder.lock'
+PID_FILE = Path(os.environ.get(
+    'JELLYPI_ENCODER_PID_FILE',
+    r'C:\ProgramData\OrthrusMediaEncoder\desktop-encoder.pid.json',
+))
 PRIORITY_FILE = APP_DIR / 'priority.txt'
 ERROR_LOG = APP_DIR / 'encoder-errors.jsonl'
 FAILURE_CACHE = APP_DIR / 'failed-files.json'
@@ -403,6 +407,7 @@ def main():
     lock = acquire_lock()
     if lock is None:
         return
+    atomic_json(PID_FILE, {'pid': os.getpid(), 'started': now()})
 
     def halt(*_):
         global stop
@@ -441,6 +446,10 @@ def main():
         except OSError:
             pass
         write_status(state='stopped', file=None, progress=0)
+        try:
+            PID_FILE.unlink(missing_ok=True)
+        except OSError:
+            pass
         lock.close()
 
 

@@ -1,0 +1,15 @@
+C:\Users\graha\Documents\GitHub\JellyPi\windows\EncoderWatchdog\bin\Release\net9.0-windows\win-x64\EncoderWatchdog.exe
+C:\Users\graha\Documents\GitHub\JellyPi\windows\EncoderWatchdog\bin\Release\net9.0-windows\win-x64\EncoderWatchdog.deps.json
+C:\Users\graha\Documents\GitHub\JellyPi\windows\EncoderWatchdog\bin\Release\net9.0-windows\win-x64\EncoderWatchdog.runtimeconfig.json
+C:\Users\graha\Documents\GitHub\JellyPi\windows\EncoderWatchdog\bin\Release\net9.0-windows\win-x64\EncoderWatchdog.dll
+C:\Users\graha\Documents\GitHub\JellyPi\windows\EncoderWatchdog\bin\Release\net9.0-windows\win-x64\EncoderWatchdog.pdb
+C:\Users\graha\Documents\GitHub\JellyPi\windows\EncoderWatchdog\obj\Release\net9.0-windows\win-x64\EncoderWatchdog.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\graha\Documents\GitHub\JellyPi\windows\EncoderWatchdog\obj\Release\net9.0-windows\win-x64\EncoderWatchdog.AssemblyInfoInputs.cache
+C:\Users\graha\Documents\GitHub\JellyPi\windows\EncoderWatchdog\obj\Release\net9.0-windows\win-x64\EncoderWatchdog.AssemblyInfo.cs
+C:\Users\graha\Documents\GitHub\JellyPi\windows\EncoderWatchdog\obj\Release\net9.0-windows\win-x64\EncoderWatchdog.csproj.CoreCompileInputs.cache
+C:\Users\graha\Documents\GitHub\JellyPi\windows\EncoderWatchdog\obj\Release\net9.0-windows\win-x64\EncoderWatchdog.sourcelink.json
+C:\Users\graha\Documents\GitHub\JellyPi\windows\EncoderWatchdog\obj\Release\net9.0-windows\win-x64\EncoderWatchdog.dll
+C:\Users\graha\Documents\GitHub\JellyPi\windows\EncoderWatchdog\obj\Release\net9.0-windows\win-x64\refint\EncoderWatchdog.dll
+C:\Users\graha\Documents\GitHub\JellyPi\windows\EncoderWatchdog\obj\Release\net9.0-windows\win-x64\EncoderWatchdog.pdb
+C:\Users\graha\Documents\GitHub\JellyPi\windows\EncoderWatchdog\obj\Release\net9.0-windows\win-x64\EncoderWatchdog.genruntimeconfig.cache
+C:\Users\graha\Documents\GitHub\JellyPi\windows\EncoderWatchdog\obj\Release\net9.0-windows\win-x64\ref\EncoderWatchdog.dll
