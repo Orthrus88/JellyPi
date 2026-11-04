@@ -96,6 +96,15 @@ pool. NFS root squashing can reject root while the real service UID works.
 10. The encoder waits 15 minutes from the last file change, then converts only
     media outside the H.264 8-bit SDR/AAC compatibility profile.
 
+All Sonarr, Radarr, and Chaptarr quality profiles have **Upgrades Allowed**
+disabled. Once a movie, episode, or book has been imported, the managers do not
+replace it merely because a preferred quality or custom-format score becomes
+available. Monitoring remains enabled, so missing media, newly released
+episodes, and explicitly requested titles are still searched for and imported.
+An operator can still replace a file deliberately with an interactive search
+and manual grab. Keep this policy in place to prevent an Arr replacement from
+putting already processed media back into the encoder queue.
+
 An empty download-client queue is normal after a successful import. A completed
 item remaining for more than one cleanup interval, an Arr queue item marked
 `warning`, or a monitored released title with no file requires investigation.
