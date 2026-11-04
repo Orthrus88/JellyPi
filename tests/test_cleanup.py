@@ -10,6 +10,7 @@ from qbit_cleanup import (
     stale_reason,
     target_keys,
     torrent_video_names,
+    unsupported_only_payload,
     usenet_target_keys,
 )
 
@@ -44,6 +45,23 @@ class CleanupSafetyTests(unittest.TestCase):
         self.assertEqual(
             torrent_video_names(files), {"show.s01e01.mkv", "show.s01e02.mp4"}
         )
+
+    def test_archive_only_download_is_rejected(self):
+        files = [{"name": "Show.S01E05.1080p.zip"}]
+        self.assertEqual(
+            unsupported_only_payload(files), {"show.s01e05.1080p.zip"}
+        )
+
+    def test_executable_only_download_is_rejected(self):
+        files = [{"name": "Show.S01E05/1.exe"}, {"name": "readme.txt"}]
+        self.assertEqual(unsupported_only_payload(files), {"1.exe"})
+
+    def test_video_with_optional_archive_is_not_rejected(self):
+        files = [
+            {"name": "Show.S01E05.mkv"},
+            {"name": "bonus.zip"},
+        ]
+        self.assertEqual(unsupported_only_payload(files), set())
 
     def test_active_usenet_job_identifies_duplicate_torrent_target(self):
         records = [

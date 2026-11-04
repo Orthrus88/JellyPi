@@ -18,6 +18,23 @@ ZERO_PROGRESS_TIMEOUT = int(os.getenv("QBIT_ZERO_PROGRESS_TIMEOUT_SECONDS", "120
 PARTIAL_STALL_TIMEOUT = int(os.getenv("QBIT_PARTIAL_STALL_TIMEOUT_SECONDS", "1800"))
 MIN_USEFUL_SPEED = int(os.getenv("QBIT_MIN_USEFUL_SPEED_BPS", str(16 * 1024)))
 VIDEO_EXTENSIONS = {".mkv", ".mp4", ".m4v", ".avi", ".mov", ".ts", ".m2ts", ".webm"}
+UNSUPPORTED_PAYLOAD_EXTENSIONS = {
+    ".7z",
+    ".bat",
+    ".cmd",
+    ".com",
+    ".dll",
+    ".exe",
+    ".jar",
+    ".js",
+    ".lnk",
+    ".msi",
+    ".ps1",
+    ".rar",
+    ".scr",
+    ".vbs",
+    ".zip",
+}
 
 
 def api_json(url: str, headers: dict | None = None):
@@ -182,6 +199,23 @@ def torrent_video_names(files: list[dict]) -> set[str]:
     return videos
 
 
+def unsupported_payload_names(files: list[dict]) -> set[str]:
+    unsupported = set()
+    for item in files:
+        normalized = str(item.get("name") or "").replace("\\", "/")
+        path = PurePosixPath(normalized)
+        if path.suffix.casefold() in UNSUPPORTED_PAYLOAD_EXTENSIONS:
+            unsupported.add(path.name.casefold())
+    return unsupported
+
+
+def unsupported_only_payload(files: list[dict]) -> set[str]:
+    """Return unsafe/archive payloads when a completed torrent has no video."""
+    if torrent_video_names(files):
+        return set()
+    return unsupported_payload_names(files)
+
+
 def torrent_files(opener, torrent_hash: str) -> list[dict]:
     query = urllib.parse.urlencode({"hash": torrent_hash})
     with opener.open(QB + f"torrents/files?{query}", timeout=30) as response:
@@ -314,6 +348,26 @@ def cleanup_once() -> None:
                 )
                 recovered += 1
             continue
+
+        files = None
+        if (
+            assigned
+            and completed
+            and current_time - completed >= MIN_COMPLETE_AGE
+        ):
+            files = torrent_files(opener, torrent_hash)
+            unsupported = unsupported_only_payload(files)
+            if unsupported:
+                app, records = assigned
+                recover_download(app, records)
+                print(
+                    f"rejected unsupported payload: "
+                    f"{torrent.get('name', torrent_hash)} "
+                    f"files={','.join(sorted(unsupported))}",
+                    flush=True,
+                )
+                recovered += 1
+                continue
         if (
             not completed
             or not added
@@ -321,7 +375,7 @@ def cleanup_once() -> None:
             or torrent_hash in active
         ):
             continue
-        required = torrent_video_names(torrent_files(opener, torrent_hash))
+        required = torrent_video_names(files or torrent_files(opener, torrent_hash))
         imported = set()
         for app in apps:
             imported |= arr_imports(

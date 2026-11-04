@@ -104,6 +104,12 @@ organized library copy remains in `Movies` or `TV`. It verifies a newer import
 record for every main video file first, so clearing a failed item from an Arr
 queue cannot cause the only downloaded copy to be deleted.
 
+Completed Arr torrents that contain only archives or executable payloads are
+rejected and blocklisted automatically, then the affected movie or episode is
+searched again. A torrent that also contains a recognized video file is left
+for the normal import checks, so optional archive extras do not reject valid
+media.
+
 When Usenet is enabled, the same worker also removes a torrent if SABnzbd is
 already downloading that exact movie or episode. Torrents that never resolve
 metadata, make no progress, or average less than 16 KiB/s without a connected
